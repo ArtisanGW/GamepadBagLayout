@@ -13,7 +13,7 @@ local function eq(actual, expected, message)
     if actual ~= expected then error((message or "") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
-local ADDON_FILES = { "GamepadBagLayout.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
+local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
 
 local function newFrame(name)
     local frame = { name = name, shown = true, protected = false, forbidden = false, scripts = {} }
@@ -54,18 +54,21 @@ local function items(bagName, count)
     for i = 1, count do
         list[i] = newFrame(bagName .. " item " .. i)
         list[i].bagID = tonumber(bagName:match("%-?%d+"))
+        list[i].slotID = i
+        list[i].GetID = function(self) return self.slotID end
     end
     return list
 end
 
 -- The game's own list, in its order (ContainerFrame.lua:1080): each bag from the
 -- highest, its items then its button; the keyring (collapsed) first.
-local function gameList(withKeyring)
+-- backpackSize: the backpack's slots (16 by default); bags 1 to 4 have 6.
+local function gameList(withKeyring, backpackSize)
     local list = {}
     local function add(frames) for _, frame in ipairs(frames) do list[#list + 1] = frame end end
     if withKeyring then add({ game.buttons[-2] }) end
     for bagID = 4, 0, -1 do
-        add(items("bag" .. bagID, bagID == 0 and 16 or 6))
+        add(items("bag" .. bagID, bagID == 0 and (backpackSize or 16) or 6))
         add({ game.buttons[bagID] })
     end
     return list
@@ -86,6 +89,14 @@ local function boot(options)
         local original = owner[name]
         owner[name] = function(...) local results = { original(...) }; hook(...); return unpack(results) end
     end
+    -- game.hearthstoneAt = { bagID, slotID }: where the Hearthstone is.
+    _G.C_Container = {
+        GetContainerItemID = function(bagID, slotID)
+            local at = game.hearthstoneAt
+            if at and at[1] == bagID and at[2] == slotID then return 6948 end
+            return 1000 + slotID
+        end,
+    }
     _G.NUM_TOTAL_BAG_FRAMES = 4
     _G.KEYRING_CONTAINER = -2
     -- The game's grid (AnchorUtil.lua:122): 10 a row from the bottom right, 42 apart,
@@ -114,6 +125,20 @@ local function boot(options)
     game.moneyBar = newFrame("money bar")
     function window:GetInitialItemAnchor() return { relativeTo = game.moneyBar } end
     function window:GetAnchorLayout() return { stride = 10 } end
+    function window:GetColumns() return 10 end
+    -- As the game counts them on the controller UI (ContainerFrame.lua:908): the
+    -- items shown plus a cell for each bag (7 here).
+    function window:GetRows()
+        local shownItems = 0
+        for _, itemButton in self:EnumerateValidItems() do
+            local bagButton = game.buttons[itemButton.bagID]
+            if not (bagButton and bagButton.isCollapsed) then shownItems = shownItems + 1 end
+        end
+        return math.ceil((shownItems + 7) / 10)
+    end
+    function window:UpdateFrameSize() self.height = self:GetRows() * 42 + 100 end
+    function window:GetHeight() return self.height end
+    function window:SetHeight(height) self.height = height end
     function window:EnumerateValidItems()
         local itemButtons = {}
         for _, frame in ipairs(game.lastList or {}) do
@@ -139,8 +164,9 @@ local function boot(options)
 end
 
 -- The game lays the window out (its list in its order).
-local function layOut(withKeyring)
-    game.lastList = gameList(withKeyring)
+local function layOut(withKeyring, backpackSize)
+    game.lastList = gameList(withKeyring, backpackSize)
+    ContainerFrameCombinedBags:UpdateFrameSize()
     ContainerFrameCombinedBags:UpdateItemLayout()
     return game.lastList
 end
@@ -149,6 +175,12 @@ end
 local function position(frame)
     local _, _, _, x, y = frame:GetPoint()
     return math.floor((y - 4) / 42 + 0.5) * 10 + math.floor(-x / 42 + 0.5) + 1
+end
+
+-- Its row (0 at the bottom) and column (0 at the right).
+local function cell(frame)
+    local index = position(frame) - 1
+    return math.floor(index / 10), index % 10
 end
 
 local function start(options)
@@ -162,18 +194,68 @@ local function startWatching(addon)
     addon.BagButtons.Watch()
 end
 
-test("the bag buttons follow the backpack's, bag 1 first, then the keyring's", function()
+test("the bag buttons get the top row, left to right: backpack, bag 1 to 4, keyring", function()
     local addon = start()
     startWatching(addon)
-    local list = layOut(true)
-    local itemCount = #list - 6
-    eq(position(game.buttons[0]), itemCount + 1, "the backpack's right after the last item")
-    eq(position(game.buttons[1]), itemCount + 2, "bag 1 next")
-    eq(position(game.buttons[2]), itemCount + 3, "bag 2")
-    eq(position(game.buttons[3]), itemCount + 4, "bag 3")
-    eq(position(game.buttons[4]), itemCount + 5, "bag 4")
-    eq(position(game.buttons[-2]), itemCount + 6, "the keyring's last")
-    eq(position(list[2]), 1, "the first item now first")
+    layOut(true)   -- 40 items: 4 rows; the game made 5
+    local order = { 0, 1, 2, 3, 4, -2 }
+    for i, bagID in ipairs(order) do
+        local row, column = cell(game.buttons[bagID])
+        eq(row, 4, "bag " .. bagID .. " on the top row")
+        eq(column, 10 - i, "bag " .. bagID .. " at its place from the left")
+    end
+    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height: the row was there")
+end)
+
+test("items filling their last row: the window grows by the bag row", function()
+    local addon = start()
+    startWatching(addon)
+    layOut(true, 17)   -- 41 items: 5 rows, then the bag row; the game made 5
+    local row = cell(game.buttons[0])
+    eq(row, 5, "the bag row above the items")
+    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100 + 42, "one row taller")
+    ContainerFrameCombinedBags:UpdateFrameSize()
+    ContainerFrameCombinedBags:UpdateItemLayout()
+    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100 + 42, "laid out again: one row taller, not two")
+end)
+
+local function itemButton(bagID, slotID)
+    for _, frame in ipairs(game.lastList) do
+        if frame.bagID == bagID and frame.slotID == slotID and frame.name:find("item", 1, true) then return frame end
+    end
+end
+
+test("the Hearthstone goes at the right end of the bag row", function()
+    local addon = start()
+    startWatching(addon)
+    game.hearthstoneAt = { 2, 3 }
+    layOut(true)   -- 40 items, 39 without it: 4 rows; the game made 5
+    local row, column = cell(itemButton(2, 3))
+    eq(row, 4, "on the bag row")
+    eq(column, 0, "at its right end")
+    eq(cell(game.buttons[0]), 4, "the bags still on that row")
+    local positions = {}
+    for _, frame in ipairs(game.lastList) do
+        if frame.name:find("item", 1, true) and frame ~= itemButton(2, 3) then positions[#positions + 1] = position(frame) end
+    end
+    table.sort(positions)
+    eq(positions[#positions], 39, "the other items closed up")
+end)
+
+test("Hearthstone setting off: it stays among the items", function()
+    local addon = start({ saved = { enabled = true, hearthstone = false } })
+    startWatching(addon)
+    game.hearthstoneAt = { 2, 3 }
+    layOut(true)
+    eq(position(itemButton(2, 3)) <= 40, true, "among the items")
+end)
+
+test("no Hearthstone in the bags: the bag row as before", function()
+    local addon = start()
+    startWatching(addon)
+    layOut(true)
+    local _, column = cell(game.buttons[-2])
+    eq(column, 4, "the keyring sixth from the left")
 end)
 
 test("items keep the game's order, closed up", function()
@@ -200,10 +282,11 @@ end)
 test("turning it off lays the window out again as the game does", function()
     local addon = start()
     startWatching(addon)
-    local list = layOut(true)
+    local list = layOut(true, 17)
     GamepadBagLayoutDB.enabled = false
     addon.BagButtons.Refresh()
     for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
+    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height again")
 end)
 
 test("items of a collapsed bag, which the game leaves out, aren't counted", function()
@@ -211,10 +294,16 @@ test("items of a collapsed bag, which the game leaves out, aren't counted", func
     startWatching(addon)
     layOut(false)   -- bag 3's items placed once
     game.buttons[3].isCollapsed = true
+    ContainerFrameCombinedBags:UpdateFrameSize()
     ContainerFrameCombinedBags:UpdateItemLayout()   -- now left out, at their old places
-    local shownItems = 4 * 6 + 16 - 6
-    eq(position(game.buttons[0]), shownItems + 1, "the backpack's right after the shown items")
-    eq(position(game.buttons[1]), shownItems + 2, "bag 1 next")
+    local shownItems = 4 * 6 + 16 - 6   -- 34: 4 rows; the game made 5 (34 + 7)
+    for i = 1, #game.lastList do
+        local frame = game.lastList[i]
+        if frame.name:find("item", 1, true) and frame.bagID ~= 3 then
+            eq(position(frame) <= shownItems, true, frame.name .. " among the shown items")
+        end
+    end
+    eq(cell(game.buttons[0]), 4, "the bag row on top")
 end)
 
 test("a protected button in a fight: nothing moves", function()

@@ -1,12 +1,13 @@
 ## Interface: 16001
 ## Title: Gamepad Bag Layout
-## Notes: Groups your bags' buttons at the top of the controller's bag window, instead of scattered among your items. Settings in Options > AddOns > Gamepad Bag Layout, or /gbl.
+## Notes: Puts your bags' buttons on their own row at the top of the controller's bag window, instead of scattered among your items. Settings in Options > AddOns > Gamepad Bag Layout, or /gbl.
 ## Author: Artisan
 ## Version: @project-version@
 ## SavedVariables: GamepadBagLayoutDB
 ## Category: Gamepad
 
 GamepadBagLayout.lua
+Hearthstone.lua
 BagButtons.lua
 Popup.lua
 RelatedAddons.lua

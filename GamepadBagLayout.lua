@@ -1,17 +1,19 @@
--- GamepadBagLayout: in the controller's Combined Backpack, groups the bag
--- buttons along the top of the window instead of scattered among the items.
+-- GamepadBagLayout: in the controller's Combined Backpack, puts the bag buttons
+-- on their own row at the top of the window instead of scattered among the items.
 -- Settings sit in the game's Options > AddOns > Gamepad Bag Layout, or /gbl.
 --
 -- Files, one job each:
 --   GamepadBagLayout.lua   saved settings, the settings page, events, /gbl
 --   BagButtons.lua         where the bag buttons go in the window
+--   Hearthstone.lua        finds the Hearthstone's slot, for the bag row's right end
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 local ADDON_NAME = ...
 
 local BagLayout = {
-    -- enabled: the bag buttons are grouped at the top of the window.
-    DEFAULTS = { enabled = true },
+    -- enabled: the bag buttons are on their own row at the top of the window.
+    -- hearthstone: the Hearthstone's slot at that row's right end.
+    DEFAULTS = { enabled = true, hearthstone = true },
 }
 _G.GamepadBagLayout = BagLayout
 
@@ -35,15 +37,24 @@ function BagLayout.RegisterSettings()
     local category, layout = Settings.RegisterVerticalLayoutCategory("Gamepad Bag Layout")
     BagLayout.category = category
 
-    local variableName = "GamepadBagLayout_enabled"
-    local setting = Settings.RegisterAddOnSetting(category, variableName, "enabled", settings,
-        Settings.VarType.Boolean, "Bag buttons at the top", BagLayout.DEFAULTS.enabled)
-    Settings.SetOnValueChangedCallback(variableName, function() BagLayout.BagButtons.Refresh() end)
-    Settings.CreateCheckbox(category, setting,
-        "Groups your bags' buttons at the top of the controller's bag window.\n\n"
-        .. "• The backpack's stays where the game puts it\n"
-        .. "• Bag 1, bag 2 and the others follow it, right to left\n\n"
+    local function addCheckbox(key, label, tooltip)
+        local variableName = "GamepadBagLayout_" .. key
+        local setting = Settings.RegisterAddOnSetting(category, variableName, key, settings,
+            Settings.VarType.Boolean, label, BagLayout.DEFAULTS[key])
+        Settings.SetOnValueChangedCallback(variableName, function() BagLayout.BagButtons.Refresh() end)
+        return Settings.CreateCheckbox(category, setting, tooltip)
+    end
+
+    addCheckbox("enabled", "Bags on their own row",
+        "Puts your bags' buttons on their own row at the top of the controller's bag window.\n\n"
+        .. "• Left to right: the backpack, bag 1 to 4, then the keyring\n"
+        .. "• Your items fill the rows below, in the game's order\n"
+        .. "• The window grows by a row when it needs to\n\n"
         .. "Turned off, each sits after its bag's items again.")
+    local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone on that row",
+        "Puts your Hearthstone at the right end of the bag row.\n\n"
+        .. "Turned off, it stays among your items.")
+    if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
 
     if BagLayout.AddRelatedAddonButtons then BagLayout.AddRelatedAddonButtons(layout) end   -- RelatedAddons.lua
     Settings.RegisterAddOnCategory(category)
