@@ -88,14 +88,16 @@ local function boot(options)
     end
     _G.NUM_TOTAL_BAG_FRAMES = 4
     _G.KEYRING_CONTAINER = -2
-    -- The game's grid (AnchorUtil.lua:122): 10 a row from the bottom right, 42 apart.
+    -- The game's grid (AnchorUtil.lua:122): 10 a row from the bottom right, 42 apart,
+    -- anchored as on the forever client: to the top right of a frame along the
+    -- window's bottom (its money bar), not to the window.
     _G.AnchorUtil = {
         GridLayout = function(frames, anchor, layout)
             game.layouts = (game.layouts or 0) + 1
             for i, frame in ipairs(frames) do
                 local row, column = math.floor((i - 1) / layout.stride), (i - 1) % layout.stride
                 frame:ClearAllPoints()
-                frame:SetPoint("BOTTOMRIGHT", anchor.window, "BOTTOMRIGHT", -7 - column * 42, 9 + row * 42)
+                frame:SetPoint("BOTTOMRIGHT", anchor.relativeTo, "TOPRIGHT", -column * 42, 4 + row * 42)
             end
         end,
     }
@@ -109,7 +111,8 @@ local function boot(options)
     game.buttons[-2].isCollapsed = true
     _G.STARTING_BAG_INDEX, _G.ENDING_BAG_INDEX = -2, 4
     _G.GamepadBagBar = { GetBagButton = function(_, bagID) return game.buttons[bagID] end }
-    function window:GetInitialItemAnchor() return { window = self } end
+    game.moneyBar = newFrame("money bar")
+    function window:GetInitialItemAnchor() return { relativeTo = game.moneyBar } end
     function window:GetAnchorLayout() return { stride = 10 } end
     function window:EnumerateValidItems()
         local itemButtons = {}
@@ -145,7 +148,7 @@ end
 -- A frame's place in the grid, 1 at the bottom right.
 local function position(frame)
     local _, _, _, x, y = frame:GetPoint()
-    return math.floor((y - 9) / 42 + 0.5) * 10 + math.floor((-7 - x) / 42 + 0.5) + 1
+    return math.floor((y - 4) / 42 + 0.5) * 10 + math.floor(-x / 42 + 0.5) + 1
 end
 
 local function start(options)
@@ -228,7 +231,7 @@ test("watching twice hooks once", function()
     startWatching(addon)
     addon.BagButtons.Watch()
     layOut(true)
-    eq(game.layouts, 2, "the game's layout and ours, once")
+    eq(addon.BagButtons.regroupedCount, 1, "laid out again once")
 end)
 
 test("saved keys the addon doesn't use are dropped", function()

@@ -8,15 +8,16 @@
 -- keyring's), right to left along the top of the window.
 --
 -- A post-hook on the window's own UpdateItemLayout runs once the game has laid
--- the grid out. It reads the game's order from where the game just put each
--- button (the grid runs from the bottom right, right to left, then up a row),
--- and lays the same buttons out again with the window's own anchor and grid
--- (GetInitialItemAnchor, GetAnchorLayout), only the bag buttons moved. Nothing of
--- the game's is replaced: the buttons, their clicks and the controller's
--- navigation stay the game's, and the window keeps its size (the game already
--- leaves a cell for each bag's button). The buttons aren't protected, so this
--- works in a fight too. (A hook on AnchorUtil.GridLayout never ran: the game's
--- code doesn't reach an addon's hook on it.)
+-- the grid out. It reads where the game put each button (its anchor: on this
+-- client all are anchored to one frame along the window's bottom, not to the
+-- window as the source shows), orders them as the grid runs (from the bottom
+-- right, right to left, then up a row), and hands the same anchors back in a new
+-- order: only the bag buttons moved. So the game's spacing and anchor frame stay
+-- as they are. Nothing of the game's is replaced: the buttons, their clicks and
+-- the controller's navigation stay the game's, and the window keeps its size
+-- (the game already leaves a cell for each bag's button). The buttons aren't
+-- protected, so this works in a fight too. (A hook on AnchorUtil.GridLayout
+-- never ran in game: the game's code doesn't reach an addon's hook on it.)
 local BagLayout = _G.GamepadBagLayout
 
 local BagButtons = {}
@@ -62,17 +63,24 @@ function BagButtons.Regroup(frames, bagBar)
     return regrouped
 end
 
--- Where the game put a button in the window's grid: its offsets from the
--- window's bottom right, or nil when it isn't in the grid.
-local function gridOffsets(frame, window)
-    local succeeded, point, relativeTo, _, x, y = pcall(frame.GetPoint, frame, 1)
-    if not (succeeded and point == "BOTTOMRIGHT" and relativeTo == window) then return nil end
-    return tonumber(x), tonumber(y)
+-- A button's anchor as the game set it: { point, relativeTo, relativePoint, x, y }.
+local function anchorOf(frame)
+    local succeeded, point, relativeTo, relativePoint, x, y = pcall(frame.GetPoint, frame, 1)
+    if not (succeeded and point and tonumber(x) and tonumber(y)) then return nil end
+    return { point, relativeTo, relativePoint, tonumber(x), tonumber(y) }
 end
 
--- The window's buttons as the game laid them out, in its order: its items (not
--- those of a collapsed bag, which the game leaves out) and the bags' buttons.
+local function sameGrid(anchor, gridAnchor)
+    return anchor[1] == gridAnchor[1] and anchor[2] == gridAnchor[2] and anchor[3] == gridAnchor[3]
+end
+
+-- The window's grid as the game laid it out, in its order: { frame, anchor }
+-- for its items (not those of a collapsed bag, which the game leaves out) and
+-- the bags' buttons; the grid is the one the backpack's button is anchored in.
 function BagButtons.GameOrder(window, bagBar)
+    local backpackButton = bagButton(bagBar, 0)
+    local gridAnchor = backpackButton and anchorOf(backpackButton)
+    if not gridAnchor then return {} end
     local candidates = {}
     for _, itemButton in window:EnumerateValidItems() do
         local bagID = itemButton.bagID or itemButton:GetBagID()
@@ -91,17 +99,15 @@ function BagButtons.GameOrder(window, bagBar)
     end
     local placed = {}
     for _, frame in ipairs(candidates) do
-        local x, y = gridOffsets(frame, window)
-        if x then placed[#placed + 1] = { frame = frame, x = x, y = y } end
+        local anchor = anchorOf(frame)
+        if anchor and sameGrid(anchor, gridAnchor) then placed[#placed + 1] = { frame = frame, anchor = anchor } end
     end
     -- Bottom row first (lowest y), each row from the right (highest x).
     table.sort(placed, function(first, second)
-        if math.abs(first.y - second.y) > 0.5 then return first.y < second.y end
-        return first.x > second.x
+        if math.abs(first.anchor[5] - second.anchor[5]) > 0.5 then return first.anchor[5] < second.anchor[5] end
+        return first.anchor[4] > second.anchor[4]
     end)
-    local ordered = {}
-    for i, entry in ipairs(placed) do ordered[i] = entry.frame end
-    return ordered
+    return placed
 end
 
 local function canMove(frame)
@@ -109,18 +115,23 @@ local function canMove(frame)
     return not (InCombatLockdown() and frame:IsProtected())
 end
 
--- After the game laid the window out.
+-- After the game laid the window out: the same places, bag buttons grouped.
 local function afterLayout(window)
     if not BagLayout.GetSettings().enabled then return end
     local bagBar = rawget(_G, "GamepadBagBar")
     if not bagBar or window:IsForbidden() then return end
-    local regrouped = BagButtons.Regroup(BagButtons.GameOrder(window, bagBar), bagBar)
+    local placed = BagButtons.GameOrder(window, bagBar)
+    local frames = {}
+    for i, entry in ipairs(placed) do frames[i] = entry.frame end
+    local regrouped = BagButtons.Regroup(frames, bagBar)
     if not regrouped then return end
     for _, frame in ipairs(regrouped) do
         if not canMove(frame) then return end
     end
-    local succeeded, problem = pcall(AnchorUtil.GridLayout, regrouped, window:GetInitialItemAnchor(), window:GetAnchorLayout())
-    if not succeeded then return geterrorhandler()(problem) end
+    for i, frame in ipairs(regrouped) do
+        frame:ClearAllPoints()
+        frame:SetPoint(unpack(placed[i].anchor))
+    end
     BagButtons.regroupedCount = BagButtons.regroupedCount + 1
 end
 
