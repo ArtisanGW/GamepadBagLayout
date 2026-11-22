@@ -169,9 +169,10 @@ local function boot(options)
         end
         AnchorUtil.GridLayout(shown, self:GetInitialItemAnchor(), self:GetAnchorLayout())
     end
+    game.private = {}   -- the addon's own table, shared by its files (the "..." of each)
     for _, fileName in ipairs(ADDON_FILES) do
         local chunk = assert(loadfile(fileName))
-        chunk("GamepadBagLayout")
+        chunk("GamepadBagLayout", game.private)
     end
     return _G.GamepadBagLayout
 end
@@ -353,6 +354,42 @@ test("the swatch sets the color; the picker's opacity bar, the strength", functi
     clock = 101
     eq(addon.TintPicker.owner.OpenedThePicker(), false, "a picker shown later is someone else's")
     _G.GetTime = nil
+end)
+
+test("the picker shows a D-pad opacity hint when it's ours, on a controller", function()
+    local addon = start()
+    startWatching(addon)
+    local clock = 100
+    _G.GetTime = function() return clock end
+    _G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+    local picker = newFrame("ColorPickerFrame")
+    local hooks = {}
+    function picker:HookScript(script, handler) hooks[script] = handler end
+    picker.Content = { ColorPicker = newFrame("color select"), AlphaBackground = newFrame("alpha background") }
+    local colorSelect = picker.Content.ColorPicker
+    colorSelect.Alpha, colorSelect.AlphaThumb = newFrame("alpha"), newFrame("alpha thumb")
+    function colorSelect:SetColorAlpha(alpha) self.alpha = alpha end
+    function colorSelect:GetColorAlpha() return self.alpha end
+    local hint
+    function picker:CreateFontString()
+        hint = newFrame("hint")
+        function hint:SetText(text) self.text = text end
+        return hint
+    end
+    _G.ColorPickerFrame = picker
+    game.private.PickerSticks.Watch(addon.TintPicker.owner)
+    addon.TintPicker.SwatchColor()   -- the swatch reads its color, then opens the picker
+    hooks.OnShow()
+    eq(picker.hasOpacity, true, "the opacity bar")
+    eq(hint.shown, true, "the hint shown")
+    eq(hint.text:find("D-pad", 1, true) ~= nil, true, "it names the D-pad")
+    eq(hint.point[2], colorSelect.Alpha, "under the opacity bar")
+    hooks.OnHide()
+    eq(hint.shown, false, "hidden with the picker")
+    clock = 105
+    hooks.OnShow()   -- someone else's picker
+    eq(hint.shown, false, "not on someone else's picker")
+    _G.GetTime, _G.InputUtil, _G.ColorPickerFrame = nil, nil, nil
 end)
 
 test("items keep the game's order, closed up", function()

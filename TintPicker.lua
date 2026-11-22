@@ -6,6 +6,7 @@
 -- tainted: its sticks do nothing.) That swatch sets the color only, so
 -- PickerSticks.lua adds the opacity bar, and the controller's sticks and D-pad,
 -- when the picker shows for this swatch.
+local _, addonTable = ...   -- PickerSticks.lua (devAddons/luaSnippets) puts itself there
 local BagLayout = _G.GamepadBagLayout
 
 local TintPicker = {
@@ -42,7 +43,7 @@ function TintPicker.AddSwatch(category, label, tooltip)
     if not (type(Settings.RegisterProxySetting) == "function" and type(Settings.CreateColorSwatch) == "function") then
         return
     end
-    BagLayout.PickerSticks.Watch(TintPicker.owner)
+    addonTable.PickerSticks.Watch(TintPicker.owner)
     local setting = Settings.RegisterProxySetting(category, "GamepadBagLayout_tintColorSwatch",
         Settings.VarType.String, label, BagLayout.DEFAULTS.tintColor, TintPicker.SwatchColor, TintPicker.SetSwatchColor)
     Settings.CreateColorSwatch(category, setting, tooltip)
