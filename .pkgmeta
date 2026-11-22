@@ -1,0 +1,12 @@
+# What the BigWigs packager puts in the release zip.
+# Files starting with a dot (.github, .pkgmeta) are left out on their own.
+package-as: GamepadBagLayout
+
+# Comments only on their own line: the packager reads anything after an item as part of it.
+ignore:
+  - tests
+
+# The changelog shown with each release: written by hand, not built from commit messages.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
