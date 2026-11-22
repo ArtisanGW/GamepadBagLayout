@@ -356,7 +356,7 @@ test("the swatch sets the color; the picker's opacity bar, the strength", functi
     _G.GetTime = nil
 end)
 
-test("the picker shows a D-pad opacity hint when it's ours, on a controller", function()
+test("the picker shows the D-pad up/down icon when it's ours, on a controller", function()
     local addon = start()
     startWatching(addon)
     local clock = 100
@@ -370,10 +370,15 @@ test("the picker shows a D-pad opacity hint when it's ours, on a controller", fu
     colorSelect.Alpha, colorSelect.AlphaThumb = newFrame("alpha"), newFrame("alpha thumb")
     function colorSelect:SetColorAlpha(alpha) self.alpha = alpha end
     function colorSelect:GetColorAlpha() return self.alpha end
+    _G.InputIconTextureSetUtility = {
+        GetActiveInputIconButtonTextures = function(key)
+            if key == "DIRPADVERTICAL" then return { "dpadupdown-normal", "over", "dpadupdown-down", "focus", "disabled" } end
+        end,
+    }
     local hint
-    function picker:CreateFontString()
-        hint = newFrame("hint")
-        function hint:SetText(text) self.text = text end
+    function picker:CreateTexture()
+        hint = newFrame("icon")
+        function hint:SetAtlas(atlas) self.atlas = atlas end
         return hint
     end
     _G.ColorPickerFrame = picker
@@ -382,14 +387,14 @@ test("the picker shows a D-pad opacity hint when it's ours, on a controller", fu
     hooks.OnShow()
     eq(picker.hasOpacity, true, "the opacity bar")
     eq(hint.shown, true, "the hint shown")
-    eq(hint.text:find("D-pad", 1, true) ~= nil, true, "it names the D-pad")
+    eq(hint.atlas, "dpadupdown-normal", "the game's D-pad up/down art")
     eq(hint.point[2], colorSelect.Alpha, "under the opacity bar")
     hooks.OnHide()
     eq(hint.shown, false, "hidden with the picker")
     clock = 105
     hooks.OnShow()   -- someone else's picker
     eq(hint.shown, false, "not on someone else's picker")
-    _G.GetTime, _G.InputUtil, _G.ColorPickerFrame = nil, nil, nil
+    _G.GetTime, _G.InputUtil, _G.ColorPickerFrame, _G.InputIconTextureSetUtility = nil, nil, nil, nil
 end)
 
 test("items keep the game's order, closed up", function()

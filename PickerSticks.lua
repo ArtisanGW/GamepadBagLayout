@@ -10,9 +10,10 @@
 --   the right stick's up and down change the brightness;
 --   the D-pad's up and down change the opacity, on the picker's own opacity bar,
 --   which the settings swatch doesn't ask for, so it's put on the picker here,
---   with a "D-pad: Opacity" hint under it (the game's own footer hint for it
---   shows only when the picker opens with its opacity: refreshing that footer
---   from addon code would taint its bindings, so the hint is ours).
+--   with the controller's D-pad up/down icon under it, pressed while held (the
+--   game's own footer hint for it shows only when the picker opens with its
+--   opacity: refreshing that footer from addon code would taint its bindings,
+--   so the icon is ours, the game's art for the controller in use).
 -- Nothing runs while the picker is shut, or open for anything else.
 --
 -- It knows nothing of the color it's for: PickerSticks.Watch(owner) takes an owner with
@@ -26,7 +27,9 @@ local PickerSticks = {
     WHEEL_PER_SECOND = 0.8,        -- full stick: the middle to the wheel's edge in about a second
     OPACITY_PER_SECOND = 0.5,      -- D-pad held: see-through to solid in two seconds (the game's: 0.01 per 0.02 s)
     STICK_DEAD_ZONE = 0.2,
-    OPACITY_HINT = "D-pad: " .. (rawget(_G, "OPACITY") or "Opacity"),   -- the game's own word for it
+    OPACITY_ICON_SIZE = 28,
+    OPACITY_ICON_KEY = "DIRPADVERTICAL",   -- GAMEPAD_DPAD_VERTICAL (GamepadConstants.lua:14)
+    ICON_NORMAL = 1, ICON_PRESSED = 3,     -- InputIconTextureState (InputIconTexture.lua:25-31)
 }
 addonTable.PickerSticks = PickerSticks
 
@@ -87,7 +90,27 @@ function PickerSticks.WheelColor(x, y)
 end
 
 local owner        -- set by PickerSticks.Watch
-local opacityHint  -- our hint under the opacity bar, made the first time it's needed
+local opacityIcon  -- our D-pad icon under the opacity bar, made the first time it's needed
+
+-- The game's art for a controller key in a state, for the controller in use
+-- (InputIconTextureSetUtility, forever branch InputIconTexture.lua:556-567): an
+-- atlas name, or nil.
+function PickerSticks.IconAtlas(key, state)
+    local utility = rawget(_G, "InputIconTextureSetUtility")
+    if type(utility) ~= "table" or type(utility.GetActiveInputIconButtonTextures) ~= "function" then return nil end
+    local succeeded, textures = pcall(utility.GetActiveInputIconButtonTextures, key)
+    local atlas = succeeded and type(textures) == "table" and textures[state] or nil
+    return type(atlas) == "string" and atlas or nil
+end
+
+-- The icon as pressed (D-pad held) or not.
+local function showIconPressed(pressed)
+    if not (opacityIcon and opacityIcon:IsShown()) or opacityIcon.pressed == pressed then return end
+    local atlas = PickerSticks.IconAtlas(PickerSticks.OPACITY_ICON_KEY,
+        pressed and PickerSticks.ICON_PRESSED or PickerSticks.ICON_NORMAL)
+    if atlas then opacityIcon:SetAtlas(atlas) end
+    opacityIcon.pressed = pressed
+end
 
 local function colorSelectOf(picker)
     return type(picker) == "table" and picker.Content and picker.Content.ColorPicker
@@ -110,8 +133,9 @@ local function moveWithSticks(colorSelect, elapsed)
     if newHue ~= hue or newSaturation ~= saturation or newValue ~= value then
         colorSelect:SetColorHSV(newHue, newSaturation, newValue)
     end
-    local opacityDirection = (PickerSticks.PadButtonDown("PADDUP") and 1 or 0)
-        - (PickerSticks.PadButtonDown("PADDDOWN") and 1 or 0)
+    local upHeld, downHeld = PickerSticks.PadButtonDown("PADDUP"), PickerSticks.PadButtonDown("PADDDOWN")
+    showIconPressed(upHeld or downHeld)
+    local opacityDirection = (upHeld and 1 or 0) - (downHeld and 1 or 0)
     if opacityDirection ~= 0 and type(colorSelect.GetColorAlpha) == "function" then
         local alpha = colorSelect:GetColorAlpha() or 1
         local newAlpha = math.max(0, math.min(1, alpha + opacityDirection * PickerSticks.OPACITY_PER_SECOND * elapsed))
@@ -151,22 +175,25 @@ function PickerSticks.AddOpacityBar(picker)
     if picker.SetWidth then picker:SetWidth(388) end
 end
 
--- The "D-pad: Opacity" hint under the opacity bar, on a controller only.
+-- The D-pad up/down icon under the opacity bar, on a controller only.
 function PickerSticks.ShowOpacityHint(picker)
     local colorSelect = colorSelectOf(picker)
     local bar = colorSelect and colorSelect.Alpha
-    if not (bar and type(picker.CreateFontString) == "function") then return end
-    if not opacityHint then
-        opacityHint = picker:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        opacityHint:SetText(PickerSticks.OPACITY_HINT)
+    local atlas = PickerSticks.IconAtlas(PickerSticks.OPACITY_ICON_KEY, PickerSticks.ICON_NORMAL)
+    if not (bar and atlas and type(picker.CreateTexture) == "function") then return end
+    if not opacityIcon then
+        opacityIcon = picker:CreateTexture(nil, "OVERLAY")
+        opacityIcon:SetSize(PickerSticks.OPACITY_ICON_SIZE, PickerSticks.OPACITY_ICON_SIZE)
     end
-    opacityHint:ClearAllPoints()
-    opacityHint:SetPoint("TOP", bar, "BOTTOM", 0, -4)
-    opacityHint:Show()
+    opacityIcon:SetAtlas(atlas)   -- each time: the controller may have changed
+    opacityIcon.pressed = false
+    opacityIcon:ClearAllPoints()
+    opacityIcon:SetPoint("TOP", bar, "BOTTOM", 0, -4)
+    opacityIcon:Show()
 end
 
 function PickerSticks.HideOpacityHint()
-    if opacityHint then opacityHint:Hide() end
+    if opacityIcon then opacityIcon:Hide() end
 end
 
 -- Watches the game's picker (post-hooks only) for the given owner. Once.
