@@ -1,18 +1,19 @@
 -- GamepadBagLayout: in the controller's Combined Backpack, puts the bag buttons
--- on their own row at the top of the window instead of scattered among the items.
+-- together at the top of the window instead of scattered among the items, and
+-- the Hearthstone first, where the cursor starts.
 -- Settings sit in the game's Options > AddOns > Gamepad Bag Layout, or /gbl.
 --
 -- Files, one job each:
 --   GamepadBagLayout.lua   saved settings, the settings page, events, /gbl
 --   BagButtons.lua         where the bag buttons go in the window
---   Hearthstone.lua        finds the Hearthstone's slot, for the bag row's right end
+--   Hearthstone.lua        finds the Hearthstone's slot; the cursor starts on it
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 local ADDON_NAME = ...
 
 local BagLayout = {
-    -- enabled: the bag buttons are on their own row at the top of the window.
-    -- hearthstone: the Hearthstone's slot at that row's right end.
+    -- enabled: the bag buttons last in the window's grid (its top row).
+    -- hearthstone: the Hearthstone first (bottom right), the cursor starting on it.
     DEFAULTS = { enabled = true, hearthstone = true },
 }
 _G.GamepadBagLayout = BagLayout
@@ -45,15 +46,14 @@ function BagLayout.RegisterSettings()
         return Settings.CreateCheckbox(category, setting, tooltip)
     end
 
-    addCheckbox("enabled", "Bags on their own row",
-        "Puts your bags' buttons on their own row at the top of the controller's bag window.\n\n"
-        .. "• Left to right: the backpack, bag 1 to 4, then the keyring\n"
-        .. "• Your items fill the rows below, in the game's order\n"
-        .. "• Moving with the controller goes to the button beside you\n\n"
+    addCheckbox("enabled", "Bags together at the top",
+        "Puts your bags' buttons together at the top of the controller's bag window.\n\n"
+        .. "• Left to right: the backpack, bag 1 and on, the reagent bag\n"
+        .. "• Your items keep the game's order below them\n\n"
         .. "Turned off, each sits after its bag's items again.")
-    local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone on that row",
-        "Puts your Hearthstone at the right end of the bag row.\n\n"
-        .. "Turned off, it stays among your items.")
+    local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone first",
+        "Puts your Hearthstone in the bottom right slot, ready to use when your bags open.\n\n"
+        .. "The cursor starts on it, outside a fight. Turned off, it stays among your items.")
     if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
 
     if BagLayout.AddRelatedAddonButtons then BagLayout.AddRelatedAddonButtons(layout) end   -- RelatedAddons.lua
@@ -76,6 +76,7 @@ eventFrame:SetScript("OnEvent", function(_, event, name)
     BagLayout.GetSettings()
     pcall(BagLayout.RegisterSettings)
     BagLayout.BagButtons.Watch()
+    BagLayout.Hearthstone.Watch()
 end)
 
 -- /gbl (or /gamepadbaglayout) opens the settings.

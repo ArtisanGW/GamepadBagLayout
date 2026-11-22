@@ -121,6 +121,10 @@ local function boot(options)
     end
     game.buttons[-2].isCollapsed = true
     _G.STARTING_BAG_INDEX, _G.ENDING_BAG_INDEX = -2, 4
+    -- The game's controller navigation: the button the cursor starts on.
+    _G.SmartNavigation = {
+        SetTargetButtonForFrame = function(_, frame, button) game.target = { frame = frame, button = button } end,
+    }
     _G.GamepadBagBar = { GetBagButton = function(_, bagID) return game.buttons[bagID] end }
     game.moneyBar = newFrame("money bar")
     function window:GetInitialItemAnchor() return { relativeTo = game.moneyBar } end
@@ -192,108 +196,15 @@ end
 local function startWatching(addon)
     addon.GetSettings()
     addon.BagButtons.Watch()
+    addon.Hearthstone.Watch()
 end
 
-test("the bag buttons get the top row, left to right: backpack, bag 1 to 4, keyring", function()
-    local addon = start()
-    startWatching(addon)
-    layOut(true)   -- 40 items: 4 rows; the game made 5
-    local order = { 0, 1, 2, 3, 4, -2 }
-    for i, bagID in ipairs(order) do
-        local row, column = cell(game.buttons[bagID])
-        eq(row, 4, "bag " .. bagID .. " on the top row")
-        eq(column, 10 - i, "bag " .. bagID .. " at its place from the left")
-    end
-    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height: the row was there")
-end)
-
--- Every button the window shows (items of collapsed bags aside), by column
--- (0 at the right): its rows from the bottom.
-local function columnsOfRows()
-    local shown = {}
-    for _, frame in ipairs(game.lastList) do
-        local bagButton = frame.name:find("item", 1, true) and game.buttons[frame.bagID]
-        if not (bagButton and bagButton.isCollapsed) then shown[#shown + 1] = frame end
-    end
-    local columns = {}
-    for _, frame in ipairs(shown) do
-        local row, column = cell(frame)
-        columns[column] = columns[column] or {}
-        table.insert(columns[column], row)
-    end
-    return columns
+-- The game picks the backpack's button to start on as the bags open
+-- (ContainerFrame.lua:3564).
+local function gamePicksStart()
+    SmartNavigation:SetTargetButtonForFrame(ContainerFrameCombinedBags, game.buttons[0])
+    return game.target.button
 end
-
--- What the controller needs (SmartNavigation.lua:1399): no hole in a column.
-local function checkNoHoles(label)
-    for column, rows in pairs(columnsOfRows()) do
-        table.sort(rows)
-        for i, row in ipairs(rows) do eq(row, i - 1, label .. ": column " .. column .. " has no hole") end
-    end
-end
-
--- The game's grid move to the right (SmartNavigation.lua:1399-1428, height
--- compensation on, the wrap left out): next column, same place from the bottom.
-local function rightOf(frame)
-    local byColumn = {}
-    for _, other in ipairs(game.lastList) do
-        local bagButton = other.name:find("item", 1, true) and game.buttons[other.bagID]
-        if not (bagButton and bagButton.isCollapsed) then
-            local row, column = cell(other)
-            byColumn[column] = byColumn[column] or {}
-            table.insert(byColumn[column], { frame = other, row = row })
-        end
-    end
-    for _, entries in pairs(byColumn) do table.sort(entries, function(first, second) return first.row > second.row end) end
-    local _, column = cell(frame)
-    local current, next = byColumn[column], byColumn[column - 1]
-    if not next then return nil end
-    for index, entry in ipairs(current) do
-        if entry.frame == frame then
-            local target = next[index + (#next - #current)]
-            return target and target.frame
-        end
-    end
-end
-
-test("no column has a hole, whatever the backpack's size", function()
-    for backpackSize = 1, 40 do
-        for _, hearthstone in ipairs({ false, true }) do
-            local addon = start()
-            startWatching(addon)
-            game.hearthstoneAt = hearthstone and { 0, 1 } or nil
-            layOut(true, backpackSize)
-            local label = backpackSize .. " slots" .. (hearthstone and ", Hearthstone" or "")
-            checkNoHoles(label)
-            local bagRow = cell(game.buttons[0])
-            for _, rows in pairs(columnsOfRows()) do
-                for _, row in ipairs(rows) do eq(row <= bagRow, true, label .. ": nothing above the bag row") end
-            end
-        end
-    end
-end)
-
-test("right along the bag row: bag after bag (the hole seen in game)", function()
-    local addon = start()
-    startWatching(addon)
-    game.hearthstoneAt = { 2, 3 }
-    layOut(true, 23)   -- 47 items, 46 without the Hearthstone: the last row not full
-    local order = { 0, 1, 2, 3, 4, -2 }
-    for i = 1, #order - 1 do
-        eq(rightOf(game.buttons[order[i]]), game.buttons[order[i + 1]], "right of bag " .. order[i])
-    end
-end)
-
-test("the window's height follows the rows taken", function()
-    local addon = start()
-    startWatching(addon)
-    layOut(true, 20)   -- 44 items: the game makes 6 rows (44 + 7 cells), 5 are enough
-    eq(cell(game.buttons[0]), 4, "the bag row is the fifth")
-    eq(ContainerFrameCombinedBags:GetHeight(), 6 * 42 + 100 - 42, "one row shorter")
-    ContainerFrameCombinedBags:UpdateFrameSize()
-    ContainerFrameCombinedBags:UpdateItemLayout()
-    eq(ContainerFrameCombinedBags:GetHeight(), 6 * 42 + 100 - 42, "laid out again: the same")
-end)
 
 local function itemButton(bagID, slotID)
     for _, frame in ipairs(game.lastList) do
@@ -301,32 +212,82 @@ local function itemButton(bagID, slotID)
     end
 end
 
-test("the Hearthstone goes at the right end of the bag row", function()
+-- Every button the window shows (items of collapsed bags aside).
+local function shownFrames()
+    local shown = {}
+    for _, frame in ipairs(game.lastList) do
+        local bagButton = frame.name:find("item", 1, true) and game.buttons[frame.bagID]
+        if not (bagButton and bagButton.isCollapsed) then shown[#shown + 1] = frame end
+    end
+    return shown
+end
+
+-- The game's own cells, no more: positions 1 to the count shown, each used once.
+local function checkSameCells(label)
+    local shown = shownFrames()
+    local used = {}
+    for _, frame in ipairs(shown) do
+        local at = position(frame)
+        eq(used[at], nil, label .. ": cell " .. at .. " used once")
+        used[at] = true
+        eq(at >= 1 and at <= #shown, true, label .. ": " .. frame.name .. " in one of the game's cells")
+    end
+end
+
+test("the bag buttons last: on top, left to right: backpack, bag 1 to 4, keyring", function()
+    local addon = start()
+    startWatching(addon)
+    local list = layOut(true)   -- 40 items and 6 bag buttons: 46 cells
+    local order = { 0, 1, 2, 3, 4, -2 }
+    for i, bagID in ipairs(order) do eq(position(game.buttons[bagID]), 47 - i, "bag " .. bagID) end
+    checkSameCells("with the keyring")
+    eq(#list, 46, "every cell of the game's")
+end)
+
+test("the Hearthstone first, in the bottom right cell", function()
     local addon = start()
     startWatching(addon)
     game.hearthstoneAt = { 2, 3 }
-    layOut(true)   -- 40 items, 39 without it: 4 rows; the game made 5
-    local row, column = cell(itemButton(2, 3))
-    eq(row, 4, "on the bag row")
-    eq(column, 0, "at its right end")
-    eq(cell(game.buttons[0]), 4, "the bags still on that row")
-    checkNoHoles("with the Hearthstone")
+    layOut(true)
+    eq(position(itemButton(2, 3)), 1, "the first cell")
+    eq(position(game.buttons[0]), 46, "the backpack's still last")
+    checkSameCells("with the Hearthstone")
 end)
 
-test("Hearthstone setting off: it stays among the items", function()
+test("Hearthstone setting off: it stays among the items, in the game's order", function()
     local addon = start({ saved = { enabled = true, hearthstone = false } })
     startWatching(addon)
-    game.hearthstoneAt = { 2, 3 }
+    game.hearthstoneAt = { 4, 1 }   -- the game's first item
     layOut(true)
-    eq(position(itemButton(2, 3)) <= 40, true, "among the items")
+    eq(position(itemButton(4, 1)), 1, "where the game's order puts it")
+    eq(position(itemButton(4, 2)), 2, "the next one after it")
+    game.hearthstoneAt = { 2, 3 }
+    ContainerFrameCombinedBags:UpdateItemLayout()
+    eq(position(itemButton(2, 3)) > 1, true, "not moved to the first cell")
 end)
 
-test("no Hearthstone in the bags: the bag row as before", function()
+test("the cursor starts on the Hearthstone when the bags open", function()
+    local addon = start()
+    startWatching(addon)
+    game.hearthstoneAt = { 2, 3 }
+    layOut(true)
+    eq(gamePicksStart(), itemButton(2, 3), "the Hearthstone")
+end)
+
+test("the cursor stays on the game's pick: in a fight, setting off, no Hearthstone", function()
     local addon = start()
     startWatching(addon)
     layOut(true)
-    local _, column = cell(game.buttons[-2])
-    eq(column, 4, "the keyring sixth from the left")
+    eq(gamePicksStart(), game.buttons[0], "no Hearthstone: the backpack's")
+    game.hearthstoneAt = { 2, 3 }
+    game.combat = true
+    eq(gamePicksStart(), game.buttons[0], "in a fight: the backpack's")
+    game.combat = false
+    GamepadBagLayoutDB.hearthstone = false
+    eq(gamePicksStart(), game.buttons[0], "setting off: the backpack's")
+    GamepadBagLayoutDB.hearthstone = true
+    SmartNavigation:SetTargetButtonForFrame(newFrame("another window"), game.buttons[1])
+    eq(game.target.button, game.buttons[1], "another window's pick left alone")
 end)
 
 test("items keep the game's order, closed up", function()
@@ -336,10 +297,11 @@ test("items keep the game's order, closed up", function()
     local previous = 0
     for _, frame in ipairs(list) do
         if not frame.name:find("button", 1, true) then
-            eq(position(frame) > previous, true, frame.name .. " after the one before")
+            eq(position(frame), previous + 1, frame.name .. " right after the one before")
             previous = position(frame)
         end
     end
+    eq(previous, 4 * 6 + 16, "every item")
 end)
 
 test("turned off: the game's own layout stays", function()
@@ -364,17 +326,11 @@ test("items of a collapsed bag, which the game leaves out, aren't counted", func
     startWatching(addon)
     layOut(false)   -- bag 3's items placed once
     game.buttons[3].isCollapsed = true
-    ContainerFrameCombinedBags:UpdateFrameSize()
     ContainerFrameCombinedBags:UpdateItemLayout()   -- now left out, at their old places
-    local shownItems = 4 * 6 + 16 - 6   -- 34: 4 rows; the game made 5 (34 + 7)
-    for i = 1, #game.lastList do
-        local frame = game.lastList[i]
-        if frame.name:find("item", 1, true) and frame.bagID ~= 3 then
-            eq(position(frame) <= shownItems, true, frame.name .. " among the shown items")
-        end
-    end
-    checkNoHoles("bag 3 collapsed")
-    eq(cell(game.buttons[0]), 3, "the bag row on top: 34 items take 3 rows and the free columns")
+    local shownItems = 4 * 6 + 16 - 6
+    eq(position(game.buttons[4]), shownItems + 1, "bag 4's right after the shown items")
+    eq(position(game.buttons[0]), shownItems + 5, "the backpack's last")
+    checkSameCells("bag 3 collapsed")
 end)
 
 test("a protected button in a fight: nothing moves", function()
