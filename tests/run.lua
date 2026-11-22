@@ -17,7 +17,7 @@ local ADDON_FILES = { "GamepadBagLayout.lua", "BagButtons.lua", "Popup.lua", "Re
 
 local function newFrame(name)
     local frame = { name = name, shown = true, protected = false, forbidden = false, scripts = {} }
-    local noOps = { "SetPoint", "ClearAllPoints", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetToplevel",
+    local noOps = { "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetToplevel",
         "EnableMouse", "SetMovable", "RegisterForDrag", "SetClampedToScreen", "SetFrameLevel", "SetText", "SetJustifyH",
         "SetFontObject", "SetAutoFocus", "SetMultiLine", "SetAllPoints", "SetTexture", "SetAtlas", "RegisterForClicks",
         "SetAttribute", "SetEnabled", "Enable", "Disable", "HighlightText", "SetFocus", "ClearFocus", "SetTextInsets",
@@ -25,6 +25,9 @@ local function newFrame(name)
         "SetPropagateKeyboardInput", "SetScale", "SetAlpha", "SetIgnoreParentScale", "SetFixedFrameStrata",
         "SetFixedFrameLevel", "SetDrawLayer", "SetVertexColor", "SetTexCoord", "SetSnapToPixelGrid", "SetTexelSnappingBias" }
     for _, methodName in ipairs(noOps) do frame[methodName] = function() end end
+    function frame:SetPoint(...) self.point = { ... } end
+    function frame:ClearAllPoints() self.point = nil end
+    function frame:GetPoint() if self.point then return unpack(self.point) end end
     function frame:RegisterEvent(event) self.events = self.events or {}; self.events[event] = true end
     function frame:UnregisterEvent(event) if self.events then self.events[event] = nil end end
     function frame:SetScript(script, handler) self.scripts[script] = handler end
@@ -48,7 +51,10 @@ local game
 -- One bag's items (count), as the game names them: "bag2 item 3".
 local function items(bagName, count)
     local list = {}
-    for i = 1, count do list[i] = newFrame(bagName .. " item " .. i) end
+    for i = 1, count do
+        list[i] = newFrame(bagName .. " item " .. i)
+        list[i].bagID = tonumber(bagName:match("%-?%d+"))
+    end
     return list
 end
 
@@ -67,7 +73,7 @@ end
 
 local function boot(options)
     options = options or {}
-    game = { positions = {}, combat = false }
+    game = { combat = false }
     _G.GamepadBagLayoutDB = options.saved
     _G.InCombatLockdown = function() return game.combat end
     _G.CreateFrame = function(_, name) local frame = newFrame(name); if name then _G[name] = frame end return frame end
@@ -82,20 +88,45 @@ local function boot(options)
     end
     _G.NUM_TOTAL_BAG_FRAMES = 4
     _G.KEYRING_CONTAINER = -2
-    -- Where each frame sits: its index in the last GridLayout that placed it.
+    -- The game's grid (AnchorUtil.lua:122): 10 a row from the bottom right, 42 apart.
     _G.AnchorUtil = {
-        GridLayout = function(frames)
+        GridLayout = function(frames, anchor, layout)
             game.layouts = (game.layouts or 0) + 1
-            for i, frame in ipairs(frames) do game.positions[frame] = i end
+            for i, frame in ipairs(frames) do
+                local row, column = math.floor((i - 1) / layout.stride), (i - 1) % layout.stride
+                frame:ClearAllPoints()
+                frame:SetPoint("BOTTOMRIGHT", anchor.window, "BOTTOMRIGHT", -7 - column * 42, 9 + row * 42)
+            end
         end,
     }
-    _G.ContainerFrameCombinedBags = newFrame("ContainerFrameCombinedBags")
-    game.anchor = { GetRelativeTo = function() return ContainerFrameCombinedBags end }
+    local window = newFrame("ContainerFrameCombinedBags")
+    _G.ContainerFrameCombinedBags = window
     game.buttons = {}
-    for _, bagID in ipairs({ -2, 0, 1, 2, 3, 4 }) do game.buttons[bagID] = newFrame("bag button " .. bagID) end
+    for _, bagID in ipairs({ -2, 0, 1, 2, 3, 4 }) do
+        game.buttons[bagID] = newFrame("bag button " .. bagID)
+        game.buttons[bagID].bagID = bagID
+    end
+    game.buttons[-2].isCollapsed = true
+    _G.STARTING_BAG_INDEX, _G.ENDING_BAG_INDEX = -2, 4
     _G.GamepadBagBar = { GetBagButton = function(_, bagID) return game.buttons[bagID] end }
-    function ContainerFrameCombinedBags:UpdateItemLayout()
-        AnchorUtil.GridLayout(game.lastList, game.anchor, {})
+    function window:GetInitialItemAnchor() return { window = self } end
+    function window:GetAnchorLayout() return { stride = 10 } end
+    function window:EnumerateValidItems()
+        local itemButtons = {}
+        for _, frame in ipairs(game.lastList or {}) do
+            if frame.name:find("item", 1, true) then itemButtons[#itemButtons + 1] = frame end
+        end
+        return ipairs(itemButtons)
+    end
+    -- The game's layout: its list, in its order, on the grid; a collapsed bag's
+    -- items left out (and left where they were).
+    function window:UpdateItemLayout()
+        local shown = {}
+        for _, frame in ipairs(game.lastList) do
+            local bagButton = frame.name:find("item", 1, true) and game.buttons[frame.bagID]
+            if not (bagButton and bagButton.isCollapsed) then shown[#shown + 1] = frame end
+        end
+        AnchorUtil.GridLayout(shown, self:GetInitialItemAnchor(), self:GetAnchorLayout())
     end
     for _, fileName in ipairs(ADDON_FILES) do
         local chunk = assert(loadfile(fileName))
@@ -111,7 +142,11 @@ local function layOut(withKeyring)
     return game.lastList
 end
 
-local function position(frame) return game.positions[frame] end
+-- A frame's place in the grid, 1 at the bottom right.
+local function position(frame)
+    local _, _, _, x, y = frame:GetPoint()
+    return math.floor((y - 9) / 42 + 0.5) * 10 + math.floor((-7 - x) / 42 + 0.5) + 1
+end
 
 local function start(options)
     return boot(options)
@@ -168,20 +203,15 @@ test("turning it off lays the window out again as the game does", function()
     for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
 end)
 
-test("other windows' grids are left alone", function()
+test("items of a collapsed bag, which the game leaves out, aren't counted", function()
     local addon = start()
     startWatching(addon)
-    local list = gameList(true)
-    AnchorUtil.GridLayout(list, { GetRelativeTo = function() return newFrame("another window") end }, {})
-    for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
-end)
-
-test("without the controller's bag buttons in the list, nothing moves", function()
-    local addon = start()
-    startWatching(addon)
-    local list = items("bag0", 16)
-    AnchorUtil.GridLayout(list, game.anchor, {})
-    eq(game.layouts, 1, "laid out once, by the game")
+    layOut(false)   -- bag 3's items placed once
+    game.buttons[3].isCollapsed = true
+    ContainerFrameCombinedBags:UpdateItemLayout()   -- now left out, at their old places
+    local shownItems = 4 * 6 + 16 - 6
+    eq(position(game.buttons[0]), shownItems + 1, "the backpack's right after the shown items")
+    eq(position(game.buttons[1]), shownItems + 2, "bag 1 next")
 end)
 
 test("a protected button in a fight: nothing moves", function()
