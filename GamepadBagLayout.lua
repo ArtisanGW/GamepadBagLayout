@@ -8,6 +8,8 @@
 --   BagButtons.lua         where the bag buttons go in the window
 --   Hearthstone.lua        finds the Hearthstone's slot; the cursor starts on it
 --   BagTint.lua            a tint behind the bag buttons
+--   TintPicker.lua         its color swatch, with the picker's opacity bar
+--   PickerSticks.lua       the color picker on a controller: sticks, D-pad, opacity bar
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 local ADDON_NAME = ...
@@ -15,8 +17,8 @@ local ADDON_NAME = ...
 local BagLayout = {
     -- enabled: the bag buttons first in the window's grid (its bottom row).
     -- hearthstone: the Hearthstone at the top left; the cursor starts on it.
-    -- tintColor ("aarrggbb", as the game's color swatch writes it) and
-    -- tintStrength (0 to 100 %): the tint behind the bag buttons.
+    -- tintColor ("aarrggbb", as the game's color swatch writes it, alpha ff) and
+    -- tintStrength (0 to 100 %, the picker's opacity): the tint behind the bags.
     DEFAULTS = { enabled = true, hearthstone = true, tintColor = "ff409cff", tintStrength = 35 },
 }
 _G.GamepadBagLayout = BagLayout
@@ -60,8 +62,12 @@ function BagLayout.RegisterSettings()
         .. "The cursor starts on it, outside a fight. Turned off, it stays among your items.")
     if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
 
-    layout:AddInitializer(CreateSettingsButtonInitializer("Bag tint color", "Pick", BagLayout.BagTint.OpenPicker,
-        "The color behind your bags' buttons, and how strong it is.\n\nOpacity at 0 means no tint.", true))
+    BagLayout.TintPicker.AddSwatch(category, "Bag tint color",
+        "The color behind your bags' buttons, and how strong it is.\n\n"
+        .. "On a controller, in the color picker:\n"
+        .. "• Left stick: the color\n"
+        .. "• Right stick: the brightness\n"
+        .. "• D-pad up and down: the opacity (0: no tint)")
 
     if BagLayout.AddRelatedAddonButtons then BagLayout.AddRelatedAddonButtons(layout) end   -- RelatedAddons.lua
     Settings.RegisterAddOnCategory(category)

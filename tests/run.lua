@@ -13,7 +13,7 @@ local function eq(actual, expected, message)
     if actual ~= expected then error((message or "") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
-local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagTint.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
+local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagTint.lua", "PickerSticks.lua", "TintPicker.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
 
 local function newFrame(name)
     local frame = { name = name, shown = true, protected = false, forbidden = false, scripts = {} }
@@ -335,31 +335,24 @@ test("the tint's color and strength come from the settings", function()
     eq(colored[3], 255 / 255, "a broken color falls back to the default blue")
 end)
 
-test("the color picker sets the tint's color and strength; Cancel puts them back", function()
+test("the swatch sets the color; the picker's opacity bar, the strength", function()
     local addon = start()
     startWatching(addon)
     layOut(true)
-    local picker = { rgb = { 0, 0, 0 }, alpha = 0 }
-    function picker:SetupColorPickerAndShow(info)
-        self.info = info
-        self.rgb, self.alpha = { info.r, info.g, info.b }, info.opacity
-        self.previous = { info.r, info.g, info.b, info.opacity }
-    end
-    function picker:GetColorRGB() return unpack(self.rgb) end
-    function picker:GetColorAlpha() return self.alpha end
-    function picker:GetPreviousValues() return unpack(self.previous) end
-    _G.ColorPickerFrame = picker
-    addon.BagTint.OpenPicker()
-    eq(picker.info.hasOpacity, true, "with its opacity bar")
-    eq(picker.info.opacity, 0.35, "the strength as opacity")
-    picker.rgb, picker.alpha = { 1, 0, 0 }, 0.6
-    picker.info.swatchFunc()
-    picker.info.opacityFunc()
+    local clock = 100
+    _G.GetTime = function() return clock end
+    eq(addon.TintPicker.SwatchColor(), "ff409cff", "the swatch shows the color, alpha ff")
+    eq(addon.TintPicker.owner.OpenedThePicker(), true, "the picker showing now is ours")
+    eq(addon.TintPicker.owner.Opacity(), 0.35, "the strength as the opacity bar")
+    addon.TintPicker.SetSwatchColor("ffFF0000")
+    addon.TintPicker.owner.SetOpacity(0.6)
     eq(GamepadBagLayoutDB.tintColor, "ffff0000", "the color picked")
     eq(GamepadBagLayoutDB.tintStrength, 60, "the strength picked")
-    picker.info.cancelFunc()
-    eq(GamepadBagLayoutDB.tintColor, "ff409cff", "Cancel: the color back")
-    eq(GamepadBagLayoutDB.tintStrength, 35, "Cancel: the strength back")
+    addon.TintPicker.SetSwatchColor("broken")
+    eq(GamepadBagLayoutDB.tintColor, "ffff0000", "a broken value leaves it")
+    clock = 101
+    eq(addon.TintPicker.owner.OpenedThePicker(), false, "a picker shown later is someone else's")
+    _G.GetTime = nil
 end)
 
 test("items keep the game's order, closed up", function()

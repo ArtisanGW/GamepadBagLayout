@@ -9,6 +9,8 @@
 GamepadBagLayout.lua
 Hearthstone.lua
 BagTint.lua
+PickerSticks.lua
+TintPicker.lua
 BagButtons.lua
 Popup.lua
 RelatedAddons.lua
