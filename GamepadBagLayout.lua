@@ -7,6 +7,7 @@
 --   GamepadBagLayout.lua   saved settings, the settings page, events, /gbl
 --   BagButtons.lua         where the bag buttons go in the window
 --   Hearthstone.lua        finds the Hearthstone's slot; the cursor starts on it
+--   BagTint.lua            a faint tint behind the bag buttons
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 local ADDON_NAME = ...
@@ -49,7 +50,8 @@ function BagLayout.RegisterSettings()
     addCheckbox("enabled", "Bags at the bottom",
         "Puts your bags' buttons together at the bottom of the controller's bag window.\n\n"
         .. "• Left to right: the backpack, bag 1 and on, the reagent bag\n"
-        .. "• Your items keep the game's order above them\n\n"
+        .. "• Your items keep the game's order above them\n"
+        .. "• A faint gold tint sets your bags apart\n\n"
         .. "Turned off, each sits after its bag's items again.")
     local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone at the top",
         "Puts your Hearthstone at the top of your bags, ready to use when they open.\n\n"

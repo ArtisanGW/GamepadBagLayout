@@ -13,7 +13,7 @@ local function eq(actual, expected, message)
     if actual ~= expected then error((message or "") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
-local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
+local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagTint.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
 
 local function newFrame(name)
     local frame = { name = name, shown = true, protected = false, forbidden = false, scripts = {} }
@@ -23,10 +23,14 @@ local function newFrame(name)
         "SetAttribute", "SetEnabled", "Enable", "Disable", "HighlightText", "SetFocus", "ClearFocus", "SetTextInsets",
         "SetWordWrap", "SetSpacing", "SetNormalFontObject", "SetHighlightFontObject", "SetShown", "EnableKeyboard",
         "SetPropagateKeyboardInput", "SetScale", "SetAlpha", "SetIgnoreParentScale", "SetFixedFrameStrata",
-        "SetFixedFrameLevel", "SetDrawLayer", "SetVertexColor", "SetTexCoord", "SetSnapToPixelGrid", "SetTexelSnappingBias" }
+        "SetFixedFrameLevel", "SetDrawLayer", "SetColorTexture", "SetVertexColor", "SetTexCoord", "SetSnapToPixelGrid", "SetTexelSnappingBias" }
     for _, methodName in ipairs(noOps) do frame[methodName] = function() end end
-    function frame:SetPoint(...) self.point = { ... } end
-    function frame:ClearAllPoints() self.point = nil end
+    function frame:SetPoint(...)
+        self.point = { ... }
+        self.points = self.points or {}
+        self.points[#self.points + 1] = { ... }
+    end
+    function frame:ClearAllPoints() self.point, self.points = nil, nil end
     function frame:GetPoint() if self.point then return unpack(self.point) end end
     function frame:RegisterEvent(event) self.events = self.events or {}; self.events[event] = true end
     function frame:UnregisterEvent(event) if self.events then self.events[event] = nil end end
@@ -42,7 +46,12 @@ local function newFrame(name)
     function frame:GetStringHeight() return 14 end
     function frame:GetText() return "" end
     function frame:CreateFontString() return newFrame() end
-    function frame:CreateTexture() return newFrame() end
+    function frame:CreateTexture()
+        local texture = newFrame("texture")
+        self.textures = self.textures or {}
+        self.textures[#self.textures + 1] = texture
+        return texture
+    end
     return frame
 end
 
@@ -289,6 +298,22 @@ test("the cursor stays on the game's pick: in a fight, setting off, no Hearthsto
     GamepadBagLayoutDB.hearthstone = true
     SmartNavigation:SetTargetButtonForFrame(newFrame("another window"), game.buttons[1])
     eq(game.target.button, game.buttons[1], "another window's pick left alone")
+end)
+
+test("a tint behind the bags, from the backpack's to the last; none when off", function()
+    local addon = start()
+    startWatching(addon)
+    layOut(true)
+    eq(addon.BagTint.IsShown(), true, "shown")
+    local tint = ContainerFrameCombinedBags.textures[1]
+    eq(tint.points[1][2], game.buttons[0], "from the backpack's")
+    eq(tint.points[2][2], game.buttons[-2], "to the keyring's")
+    GamepadBagLayoutDB.enabled = false
+    addon.BagButtons.Refresh()
+    eq(addon.BagTint.IsShown(), false, "hidden when turned off")
+    GamepadBagLayoutDB.enabled = true
+    addon.BagButtons.Refresh()
+    eq(#ContainerFrameCombinedBags.textures, 1, "one texture, made once")
 end)
 
 test("items keep the game's order, closed up", function()

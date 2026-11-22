@@ -14,7 +14,8 @@
 -- bottom row (the backpack's, bag 1 and on, the reagent bag's, the keyring's),
 -- then the items in the game's order, then the Hearthstone (Hearthstone.lua),
 -- in the top row's first slot from the left. No cell is added
--- or left empty, so the window keeps the game's size and the controller's grid
+-- or left empty (a tint behind the bags sets them apart: BagTint.lua), so the
+-- window keeps the game's size and the controller's grid
 -- navigation (which needs columns without holes: SmartNavigation.lua:1399) works
 -- as on the game's own layout. Nothing of the game's is replaced, and turned
 -- off, the game lays it out again on its own. Neither the window nor its
@@ -45,7 +46,8 @@ end
 
 -- The game's grid in its new order: the bag buttons, right to left, so they
 -- read left to right in the window; the items (in the game's order); then the
--- Hearthstone (optional), last, so top left.
+-- Hearthstone (optional), last, so top left. Also returns how many bag
+-- buttons lead the list.
 function BagButtons.Reorder(frames, bagBar, hearthstone)
     local present = {}
     for _, frame in ipairs(frames) do present[frame] = true end
@@ -63,7 +65,7 @@ function BagButtons.Reorder(frames, bagBar, hearthstone)
         if not isBagButton[frame] and frame ~= hearthstone then ordered[#ordered + 1] = frame end
     end
     if hearthstone and present[hearthstone] then ordered[#ordered + 1] = hearthstone end
-    return ordered
+    return ordered, #bagButtons
 end
 
 -- A button's anchor as the game set it: { point, relativeTo, relativePoint, x, y }.
@@ -121,6 +123,7 @@ end
 -- After the game laid the window out: the same cells, the bag buttons first
 -- (bottom), the Hearthstone last (top).
 local function afterLayout(window)
+    BagLayout.BagTint.Hide()
     if not BagLayout.GetSettings().enabled then return end
     local bagBar = rawget(_G, "GamepadBagBar")
     if not bagBar or window:IsForbidden() then return end
@@ -137,7 +140,7 @@ local function afterLayout(window)
         end
         hearthstone = BagLayout.Hearthstone.Find(items)
     end
-    local ordered = BagButtons.Reorder(frames, bagBar, hearthstone)
+    local ordered, bagCount = BagButtons.Reorder(frames, bagBar, hearthstone)
     if not ordered then return end
     if InCombatLockdown() and window:IsProtected() then return end
     for _, frame in ipairs(ordered) do
@@ -146,6 +149,11 @@ local function afterLayout(window)
     for i, frame in ipairs(ordered) do
         frame:ClearAllPoints()
         frame:SetPoint(unpack(placed[i].anchor))
+    end
+    -- The bags' tint, when they fit on the bottom row: from the backpack's (the
+    -- last of them in the grid's order, so the leftmost) to the first.
+    if math.abs(placed[1].anchor[5] - placed[bagCount].anchor[5]) < 0.5 then
+        BagLayout.BagTint.Show(window, ordered[bagCount], ordered[1])
     end
     BagButtons.regroupedCount = BagButtons.regroupedCount + 1
 end
