@@ -1,5 +1,5 @@
--- Finds the Hearthstone among the bag window's items, so it can sit in the
--- grid's first cell (BagButtons.lua), and starts the cursor on it when the bags
+-- Finds the Hearthstone among the bag window's items, so it can sit at the top
+-- next to the bag buttons (BagButtons.lua), and starts the cursor on it when the bags
 -- open, to use it at once. It's the game's own item button for the slot the
 -- Hearthstone is in: moved, not copied, so using it, its tooltip and the
 -- controller's navigation stay the game's.

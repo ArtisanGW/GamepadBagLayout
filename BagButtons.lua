@@ -1,5 +1,5 @@
 -- Moves the bag buttons of the controller's Combined Backpack to the end of its
--- grid (the top row) and the Hearthstone to its start (the bottom right cell). With the controller UI on, the game
+-- grid (the top row), the Hearthstone just before them. With the controller UI on, the game
 -- puts one button per bag (its free slots, its menu) into the window's grid,
 -- each right after that bag's items (ContainerFrameMixin:UpdateItemLayout,
 -- forever branch Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua:1080-1105),
@@ -9,8 +9,8 @@
 -- the grid out. The game's cells stay as they are, in its order (from the bottom
 -- right, right to left, then up a row: ContainerFrameCombinedBagsMixin:
 -- GetInitialItemAnchor, ContainerFrame.lua:3032); only who sits in them changes:
--- the Hearthstone first (Hearthstone.lua), then the items in the game's order,
--- then the bag buttons, so they read left to right on the top row: the
+-- the items in the game's order, then the Hearthstone (Hearthstone.lua), then
+-- the bag buttons, so they read left to right on the top row: the
 -- backpack's, bag 1 and on, the reagent bag's, the keyring's. No cell is added
 -- or left empty, so the window keeps the game's size and the controller's grid
 -- navigation (which needs columns without holes: SmartNavigation.lua:1399) works
@@ -41,9 +41,9 @@ function BagButtons.Ordered(bagBar)
     return ordered
 end
 
--- The game's grid in its new order: the Hearthstone (optional), the items (in
--- the game's order), then the bag buttons, right to left, so they read left to
--- right in the window.
+-- The game's grid in its new order: the items (in the game's order), the
+-- Hearthstone (optional), then the bag buttons, right to left, so they read left
+-- to right in the window, the Hearthstone just right of them.
 function BagButtons.Reorder(frames, bagBar, hearthstone)
     local present = {}
     for _, frame in ipairs(frames) do present[frame] = true end
@@ -56,10 +56,10 @@ function BagButtons.Reorder(frames, bagBar, hearthstone)
     end
     if #bagButtons == 0 then return nil end
     local ordered = {}
-    if hearthstone and present[hearthstone] then ordered[1] = hearthstone end
     for _, frame in ipairs(frames) do
         if not isBagButton[frame] and frame ~= hearthstone then ordered[#ordered + 1] = frame end
     end
+    if hearthstone and present[hearthstone] then ordered[#ordered + 1] = hearthstone end
     for i = #bagButtons, 1, -1 do ordered[#ordered + 1] = bagButtons[i] end
     return ordered
 end
@@ -116,8 +116,8 @@ local function canMove(frame)
     return not (InCombatLockdown() and frame:IsProtected())
 end
 
--- After the game laid the window out: the same cells, the Hearthstone first,
--- the bag buttons last.
+-- After the game laid the window out: the same cells, the Hearthstone then the
+-- bag buttons last.
 local function afterLayout(window)
     if not BagLayout.GetSettings().enabled then return end
     local bagBar = rawget(_G, "GamepadBagBar")

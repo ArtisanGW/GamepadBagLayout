@@ -244,13 +244,14 @@ test("the bag buttons last: on top, left to right: backpack, bag 1 to 4, keyring
     eq(#list, 46, "every cell of the game's")
 end)
 
-test("the Hearthstone first, in the bottom right cell", function()
+test("the Hearthstone just before the bag buttons", function()
     local addon = start()
     startWatching(addon)
     game.hearthstoneAt = { 2, 3 }
-    layOut(true)
-    eq(position(itemButton(2, 3)), 1, "the first cell")
-    eq(position(game.buttons[0]), 46, "the backpack's still last")
+    layOut(true, 17)   -- 41 items and 6 bag buttons: 47 cells, 7 on the top row
+    eq(position(itemButton(2, 3)), 41, "right before the bags")
+    eq(cell(itemButton(2, 3)), 4, "on the top row")
+    eq(position(game.buttons[0]), 47, "the backpack's still last")
     checkSameCells("with the Hearthstone")
 end)
 
@@ -263,7 +264,7 @@ test("Hearthstone setting off: it stays among the items, in the game's order", f
     eq(position(itemButton(4, 2)), 2, "the next one after it")
     game.hearthstoneAt = { 2, 3 }
     ContainerFrameCombinedBags:UpdateItemLayout()
-    eq(position(itemButton(2, 3)) > 1, true, "not moved to the first cell")
+    eq(position(itemButton(2, 3)) < 40, true, "not moved next to the bags")
 end)
 
 test("the cursor starts on the Hearthstone when the bags open", function()

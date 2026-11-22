@@ -1,6 +1,6 @@
 -- GamepadBagLayout: in the controller's Combined Backpack, puts the bag buttons
 -- together at the top of the window instead of scattered among the items, and
--- the Hearthstone first, where the cursor starts.
+-- the Hearthstone next to them, where the cursor starts.
 -- Settings sit in the game's Options > AddOns > Gamepad Bag Layout, or /gbl.
 --
 -- Files, one job each:
@@ -13,7 +13,8 @@ local ADDON_NAME = ...
 
 local BagLayout = {
     -- enabled: the bag buttons last in the window's grid (its top row).
-    -- hearthstone: the Hearthstone first (bottom right), the cursor starting on it.
+    -- hearthstone: the Hearthstone at the top, just before the bag buttons; the
+    -- cursor starts on it.
     DEFAULTS = { enabled = true, hearthstone = true },
 }
 _G.GamepadBagLayout = BagLayout
@@ -51,8 +52,8 @@ function BagLayout.RegisterSettings()
         .. "• Left to right: the backpack, bag 1 and on, the reagent bag\n"
         .. "• Your items keep the game's order below them\n\n"
         .. "Turned off, each sits after its bag's items again.")
-    local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone first",
-        "Puts your Hearthstone in the bottom right slot, ready to use when your bags open.\n\n"
+    local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone at the top",
+        "Puts your Hearthstone at the top, just right of your bags, ready to use when your bags open.\n\n"
         .. "The cursor starts on it, outside a fight. Turned off, it stays among your items.")
     if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
 
