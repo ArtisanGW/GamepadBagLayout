@@ -234,24 +234,24 @@ local function checkSameCells(label)
     end
 end
 
-test("the bag buttons last: on top, left to right: backpack, bag 1 to 4, keyring", function()
+test("the bag buttons first: bottom right, left to right: backpack, bag 1 to 4, keyring", function()
     local addon = start()
     startWatching(addon)
     local list = layOut(true)   -- 40 items and 6 bag buttons: 46 cells
     local order = { 0, 1, 2, 3, 4, -2 }
-    for i, bagID in ipairs(order) do eq(position(game.buttons[bagID]), 47 - i, "bag " .. bagID) end
+    for i, bagID in ipairs(order) do eq(position(game.buttons[bagID]), 7 - i, "bag " .. bagID) end
     checkSameCells("with the keyring")
     eq(#list, 46, "every cell of the game's")
 end)
 
-test("the Hearthstone just before the bag buttons", function()
+test("the Hearthstone last: the top row's first slot from the left", function()
     local addon = start()
     startWatching(addon)
     game.hearthstoneAt = { 2, 3 }
     layOut(true, 17)   -- 41 items and 6 bag buttons: 47 cells, 7 on the top row
-    eq(position(itemButton(2, 3)), 41, "right before the bags")
+    eq(position(itemButton(2, 3)), 47, "the last cell")
     eq(cell(itemButton(2, 3)), 4, "on the top row")
-    eq(position(game.buttons[0]), 47, "the backpack's still last")
+    eq(position(game.buttons[0]), 6, "the backpack's still in the bottom row")
     checkSameCells("with the Hearthstone")
 end)
 
@@ -260,11 +260,11 @@ test("Hearthstone setting off: it stays among the items, in the game's order", f
     startWatching(addon)
     game.hearthstoneAt = { 4, 1 }   -- the game's first item
     layOut(true)
-    eq(position(itemButton(4, 1)), 1, "where the game's order puts it")
-    eq(position(itemButton(4, 2)), 2, "the next one after it")
+    eq(position(itemButton(4, 1)), 7, "where the game's order puts it, after the bags")
+    eq(position(itemButton(4, 2)), 8, "the next one after it")
     game.hearthstoneAt = { 2, 3 }
     ContainerFrameCombinedBags:UpdateItemLayout()
-    eq(position(itemButton(2, 3)) < 40, true, "not moved next to the bags")
+    eq(position(itemButton(2, 3)) < 46, true, "not moved to the last cell")
 end)
 
 test("the cursor starts on the Hearthstone when the bags open", function()
@@ -295,14 +295,14 @@ test("items keep the game's order, closed up", function()
     local addon = start()
     startWatching(addon)
     local list = layOut(false)
-    local previous = 0
+    local previous = 5   -- after the 5 bag buttons
     for _, frame in ipairs(list) do
         if not frame.name:find("button", 1, true) then
             eq(position(frame), previous + 1, frame.name .. " right after the one before")
             previous = position(frame)
         end
     end
-    eq(previous, 4 * 6 + 16, "every item")
+    eq(previous, 5 + 4 * 6 + 16, "every item")
 end)
 
 test("turned off: the game's own layout stays", function()
@@ -329,8 +329,9 @@ test("items of a collapsed bag, which the game leaves out, aren't counted", func
     game.buttons[3].isCollapsed = true
     ContainerFrameCombinedBags:UpdateItemLayout()   -- now left out, at their old places
     local shownItems = 4 * 6 + 16 - 6
-    eq(position(game.buttons[4]), shownItems + 1, "bag 4's right after the shown items")
-    eq(position(game.buttons[0]), shownItems + 5, "the backpack's last")
+    eq(position(game.buttons[0]), 5, "the backpack's fifth from the right")
+    eq(position(game.buttons[4]), 1, "bag 4's in the bottom right")
+    eq(shownItems + 5, #shownFrames(), "every shown item counted")
     checkSameCells("bag 3 collapsed")
 end)
 
