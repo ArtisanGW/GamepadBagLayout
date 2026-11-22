@@ -335,6 +335,33 @@ test("the tint's color and strength come from the settings", function()
     eq(colored[3], 255 / 255, "a broken color falls back to the default blue")
 end)
 
+test("the color picker sets the tint's color and strength; Cancel puts them back", function()
+    local addon = start()
+    startWatching(addon)
+    layOut(true)
+    local picker = { rgb = { 0, 0, 0 }, alpha = 0 }
+    function picker:SetupColorPickerAndShow(info)
+        self.info = info
+        self.rgb, self.alpha = { info.r, info.g, info.b }, info.opacity
+        self.previous = { info.r, info.g, info.b, info.opacity }
+    end
+    function picker:GetColorRGB() return unpack(self.rgb) end
+    function picker:GetColorAlpha() return self.alpha end
+    function picker:GetPreviousValues() return unpack(self.previous) end
+    _G.ColorPickerFrame = picker
+    addon.BagTint.OpenPicker()
+    eq(picker.info.hasOpacity, true, "with its opacity bar")
+    eq(picker.info.opacity, 0.35, "the strength as opacity")
+    picker.rgb, picker.alpha = { 1, 0, 0 }, 0.6
+    picker.info.swatchFunc()
+    picker.info.opacityFunc()
+    eq(GamepadBagLayoutDB.tintColor, "ffff0000", "the color picked")
+    eq(GamepadBagLayoutDB.tintStrength, 60, "the strength picked")
+    picker.info.cancelFunc()
+    eq(GamepadBagLayoutDB.tintColor, "ff409cff", "Cancel: the color back")
+    eq(GamepadBagLayoutDB.tintStrength, 35, "Cancel: the strength back")
+end)
+
 test("items keep the game's order, closed up", function()
     local addon = start()
     startWatching(addon)

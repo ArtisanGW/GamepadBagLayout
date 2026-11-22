@@ -60,20 +60,8 @@ function BagLayout.RegisterSettings()
         .. "The cursor starts on it, outside a fight. Turned off, it stays among your items.")
     if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
 
-    local function onTintChanged() BagLayout.BagTint.ApplyColor() end
-    local colorSetting = Settings.RegisterAddOnSetting(category, "GamepadBagLayout_tintColor", "tintColor", settings,
-        Settings.VarType.String, "Bag tint color", BagLayout.DEFAULTS.tintColor)
-    Settings.SetOnValueChangedCallback("GamepadBagLayout_tintColor", onTintChanged)
-    Settings.CreateColorSwatch(category, colorSetting,
-        "The color behind your bags' buttons.\n\nPick it to set them apart from your items.")
-    local strengthSetting = Settings.RegisterAddOnSetting(category, "GamepadBagLayout_tintStrength", "tintStrength",
-        settings, Settings.VarType.Number, "Bag tint strength", BagLayout.DEFAULTS.tintStrength)
-    Settings.SetOnValueChangedCallback("GamepadBagLayout_tintStrength", onTintChanged)
-    local strengthOptions = Settings.CreateSliderOptions(0, 100, 5)
-    strengthOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
-        function(value) return string.format("%d%%", value) end)
-    Settings.CreateSlider(category, strengthSetting, strengthOptions,
-        "How strong the color behind your bags is.\n\nAt 0% there's none.")
+    layout:AddInitializer(CreateSettingsButtonInitializer("Bag tint color", "Pick", BagLayout.BagTint.OpenPicker,
+        "The color behind your bags' buttons, and how strong it is.\n\nOpacity at 0 means no tint.", true))
 
     if BagLayout.AddRelatedAddonButtons then BagLayout.AddRelatedAddonButtons(layout) end   -- RelatedAddons.lua
     Settings.RegisterAddOnCategory(category)
