@@ -15,10 +15,10 @@
 -- are read from where the game put each button: on the Combined Backpack they
 -- are anchored to its money bar (ContainerFrameCombinedBagsMixin:
 -- GetInitialItemAnchor, ContainerFrame.lua:3032), from the bottom right, right to
--- left, then up a row. Items go back on the same grid in the game's order; the
--- bag buttons go on the top row. When the items fill their last row, the bag
--- row needs one more row than the game made room for: the window then grows by
--- that row. Nothing of the game's is replaced: the buttons, their clicks and the
+-- left, then up a row. Items go back on the same grid in the game's order, with
+-- no holes in a column, as the controller's navigation needs (see Plan); the
+-- bag buttons go on the top row. The window's height follows the rows that
+-- takes. Nothing of the game's is replaced: the buttons, their clicks and the
 -- controller's navigation stay the game's, and turned off, the game sizes and
 -- lays it out again on its own. Neither the window nor its buttons are
 -- protected, so this works in a fight too.
@@ -141,37 +141,73 @@ function BagButtons.Grid(window, placed)
     return { first = first, columnStep = columnStep, rowStep = rowStep, columns = math.max(1, columns), rows = rows }
 end
 
--- Where each button goes: { frame, anchor } for the items (bottom right, right to
--- left, up a row, as the game lays them), the bag buttons (on the top rows, left
--- to right) and rightEnd (optional: the Hearthstone, at the top row's right end,
--- when there's a cell to spare); and how many rows that takes.
+-- Where each button goes, and how many rows that takes. The controller moves
+-- through the window as a grid of columns, counting each column's buttons from
+-- the bottom (SmartNavigationMixin:GetButtonInDirectionGrid, forever branch
+-- Blizzard_GamepadSmartNavigation/SmartNavigation.lua:1399-1470, with the
+-- window's height compensation on: ContainerFrame.lua:3562). That only lands on
+-- the button beside you when no column has a hole: each fills from the bottom up,
+-- with any gap at its top. So:
+--   bag row (the top one): the bag buttons from the left, the Hearthstone
+--     (rightEnd, optional) at the right end, free cells between them;
+--   items: full rows under the bag and Hearthstone columns; the columns under the
+--     free cells take what's left, row by row (up into the bag row if need be),
+--     so their gaps sit at their tops.
+-- Items keep the game's order: bottom row first, each row from the right.
+-- Returns nil when that can't be done (no free column), to leave the game's layout.
 function BagButtons.Plan(items, bagButtons, grid, rightEnd)
-    local function anchorAt(row, column)
+    local columns = grid.columns
+    local function anchorAt(row, column)   -- column 0 at the right
         local first = grid.first
         return { first[1], first[2], first[3], first[4] + column * grid.columnStep, first[5] + row * grid.rowStep }
     end
-    local columns = grid.columns
-    if rightEnd and #bagButtons >= columns then
+    local function freeColumns(withRightEnd)
+        local free = {}
+        for column = withRightEnd and 1 or 0, columns - 1 - #bagButtons do free[#free + 1] = column end
+        return free
+    end
+    local free = freeColumns(rightEnd ~= nil)
+    if rightEnd and #free == 0 then
         -- No cell to spare on the bag row: it stays among the items.
         local withIt = {}
         for _, frame in ipairs(items) do withIt[#withIt + 1] = frame end
         withIt[#withIt + 1] = rightEnd
         items, rightEnd = withIt, nil
+        free = freeColumns(false)
     end
-    local itemRows = math.ceil(#items / columns)
-    local bagRows = math.ceil(#bagButtons / columns)
-    local rows = math.max(grid.rows, itemRows + bagRows)
+    if #free == 0 then return nil end
+    local isFree = {}
+    for _, column in ipairs(free) do isFree[column] = true end
+    local itemRows = math.max(0, math.ceil((#items - #free) / columns))
+    local leftOver = #items - (columns - #free) * itemRows   -- for the free columns
+    if leftOver < 0 then return nil end
+    local cells = {}
+    for row = 0, itemRows - 1 do
+        for column = 0, columns - 1 do
+            if not isFree[column] then cells[#cells + 1] = { row = row, column = column } end
+        end
+    end
+    for row = 0, itemRows do
+        for _, column in ipairs(free) do
+            if leftOver > 0 then
+                cells[#cells + 1] = { row = row, column = column }
+                leftOver = leftOver - 1
+            end
+        end
+    end
+    table.sort(cells, function(first, second)
+        if first.row ~= second.row then return first.row < second.row end
+        return first.column < second.column
+    end)
     local plan = {}
     for i, frame in ipairs(items) do
-        plan[#plan + 1] = { frame = frame, anchor = anchorAt(math.floor((i - 1) / columns), (i - 1) % columns) }
+        plan[#plan + 1] = { frame = frame, anchor = anchorAt(cells[i].row, cells[i].column) }
     end
     for i, button in ipairs(bagButtons) do
-        local row = rows - 1 - math.floor((i - 1) / columns)
-        local column = columns - 1 - (i - 1) % columns
-        plan[#plan + 1] = { frame = button, anchor = anchorAt(row, column) }
+        plan[#plan + 1] = { frame = button, anchor = anchorAt(itemRows, columns - i) }
     end
-    if rightEnd then plan[#plan + 1] = { frame = rightEnd, anchor = anchorAt(rows - 1, 0) } end
-    return plan, rows
+    if rightEnd then plan[#plan + 1] = { frame = rightEnd, anchor = anchorAt(itemRows, 0) } end
+    return plan, itemRows + 1
 end
 
 local function canMove(frame)
@@ -179,10 +215,11 @@ local function canMove(frame)
     return not (InCombatLockdown() and frame:IsProtected())
 end
 
--- The window's height for that many rows: the game's, plus the rows it didn't make.
+-- The window's height for that many rows: the game's, plus or minus the rows
+-- that differ from what it made.
 local function fitHeight(window, rows, grid)
     if not gameHeight then return end
-    local height = gameHeight + math.max(0, rows - grid.rows) * math.abs(grid.rowStep)
+    local height = gameHeight + (rows - grid.rows) * math.abs(grid.rowStep)
     if math.abs(window:GetHeight() - height) < 0.5 then return end
     window:SetHeight(height)
     local nineSlice = rawget(_G, "NineSliceUtil")
@@ -217,6 +254,7 @@ local function afterLayout(window)
         items = others
     end
     local plan, rows = BagButtons.Plan(items, bagButtons, grid, hearthstone)
+    if not plan then return end
     if InCombatLockdown() and window:IsProtected() then return end
     for _, entry in ipairs(plan) do
         if not canMove(entry.frame) then return end

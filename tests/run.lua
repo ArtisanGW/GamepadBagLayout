@@ -207,16 +207,92 @@ test("the bag buttons get the top row, left to right: backpack, bag 1 to 4, keyr
     eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height: the row was there")
 end)
 
-test("items filling their last row: the window grows by the bag row", function()
+-- Every button the window shows (items of collapsed bags aside), by column
+-- (0 at the right): its rows from the bottom.
+local function columnsOfRows()
+    local shown = {}
+    for _, frame in ipairs(game.lastList) do
+        local bagButton = frame.name:find("item", 1, true) and game.buttons[frame.bagID]
+        if not (bagButton and bagButton.isCollapsed) then shown[#shown + 1] = frame end
+    end
+    local columns = {}
+    for _, frame in ipairs(shown) do
+        local row, column = cell(frame)
+        columns[column] = columns[column] or {}
+        table.insert(columns[column], row)
+    end
+    return columns
+end
+
+-- What the controller needs (SmartNavigation.lua:1399): no hole in a column.
+local function checkNoHoles(label)
+    for column, rows in pairs(columnsOfRows()) do
+        table.sort(rows)
+        for i, row in ipairs(rows) do eq(row, i - 1, label .. ": column " .. column .. " has no hole") end
+    end
+end
+
+-- The game's grid move to the right (SmartNavigation.lua:1399-1428, height
+-- compensation on, the wrap left out): next column, same place from the bottom.
+local function rightOf(frame)
+    local byColumn = {}
+    for _, other in ipairs(game.lastList) do
+        local bagButton = other.name:find("item", 1, true) and game.buttons[other.bagID]
+        if not (bagButton and bagButton.isCollapsed) then
+            local row, column = cell(other)
+            byColumn[column] = byColumn[column] or {}
+            table.insert(byColumn[column], { frame = other, row = row })
+        end
+    end
+    for _, entries in pairs(byColumn) do table.sort(entries, function(first, second) return first.row > second.row end) end
+    local _, column = cell(frame)
+    local current, next = byColumn[column], byColumn[column - 1]
+    if not next then return nil end
+    for index, entry in ipairs(current) do
+        if entry.frame == frame then
+            local target = next[index + (#next - #current)]
+            return target and target.frame
+        end
+    end
+end
+
+test("no column has a hole, whatever the backpack's size", function()
+    for backpackSize = 1, 40 do
+        for _, hearthstone in ipairs({ false, true }) do
+            local addon = start()
+            startWatching(addon)
+            game.hearthstoneAt = hearthstone and { 0, 1 } or nil
+            layOut(true, backpackSize)
+            local label = backpackSize .. " slots" .. (hearthstone and ", Hearthstone" or "")
+            checkNoHoles(label)
+            local bagRow = cell(game.buttons[0])
+            for _, rows in pairs(columnsOfRows()) do
+                for _, row in ipairs(rows) do eq(row <= bagRow, true, label .. ": nothing above the bag row") end
+            end
+        end
+    end
+end)
+
+test("right along the bag row: bag after bag (the hole seen in game)", function()
     local addon = start()
     startWatching(addon)
-    layOut(true, 17)   -- 41 items: 5 rows, then the bag row; the game made 5
-    local row = cell(game.buttons[0])
-    eq(row, 5, "the bag row above the items")
-    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100 + 42, "one row taller")
+    game.hearthstoneAt = { 2, 3 }
+    layOut(true, 23)   -- 47 items, 46 without the Hearthstone: the last row not full
+    local order = { 0, 1, 2, 3, 4, -2 }
+    for i = 1, #order - 1 do
+        eq(rightOf(game.buttons[order[i]]), game.buttons[order[i + 1]], "right of bag " .. order[i])
+    end
+end)
+
+test("the window's height follows the rows taken", function()
+    local addon = start()
+    startWatching(addon)
+    layOut(true, 20)   -- 44 items: the game makes 6 rows (44 + 7 cells), 5 are enough
+    eq(cell(game.buttons[0]), 4, "the bag row is the fifth")
+    eq(ContainerFrameCombinedBags:GetHeight(), 6 * 42 + 100 - 42, "one row shorter")
     ContainerFrameCombinedBags:UpdateFrameSize()
     ContainerFrameCombinedBags:UpdateItemLayout()
-    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100 + 42, "laid out again: one row taller, not two")
+    eq(ContainerFrameCombinedBags:GetHeight(), 6 * 42 + 100 - 42, "laid out again: the same")
 end)
 
 local function itemButton(bagID, slotID)
@@ -234,12 +310,7 @@ test("the Hearthstone goes at the right end of the bag row", function()
     eq(row, 4, "on the bag row")
     eq(column, 0, "at its right end")
     eq(cell(game.buttons[0]), 4, "the bags still on that row")
-    local positions = {}
-    for _, frame in ipairs(game.lastList) do
-        if frame.name:find("item", 1, true) and frame ~= itemButton(2, 3) then positions[#positions + 1] = position(frame) end
-    end
-    table.sort(positions)
-    eq(positions[#positions], 39, "the other items closed up")
+    checkNoHoles("with the Hearthstone")
 end)
 
 test("Hearthstone setting off: it stays among the items", function()
@@ -265,11 +336,10 @@ test("items keep the game's order, closed up", function()
     local previous = 0
     for _, frame in ipairs(list) do
         if not frame.name:find("button", 1, true) then
-            eq(position(frame), previous + 1, frame.name .. " right after the one before")
+            eq(position(frame) > previous, true, frame.name .. " after the one before")
             previous = position(frame)
         end
     end
-    eq(previous, 4 * 6 + 16, "every item")
 end)
 
 test("turned off: the game's own layout stays", function()
@@ -303,7 +373,8 @@ test("items of a collapsed bag, which the game leaves out, aren't counted", func
             eq(position(frame) <= shownItems, true, frame.name .. " among the shown items")
         end
     end
-    eq(cell(game.buttons[0]), 4, "the bag row on top")
+    checkNoHoles("bag 3 collapsed")
+    eq(cell(game.buttons[0]), 3, "the bag row on top: 34 items take 3 rows and the free columns")
 end)
 
 test("a protected button in a fight: nothing moves", function()

@@ -5,7 +5,7 @@ With the controller UI on, the game's bag window puts each bag's button (its fre
 - Left to right: the backpack, bag 1 to 4, then the keyring
 - Your Hearthstone at the right end of that row, one press away (a setting turns it off)
 - Your items fill the rows below, in the game's order
-- When your items fill their last row, the window grows by a row to fit
+- No holes in the grid: moving with the controller always goes to the button beside you
 - Nothing is replaced: the buttons are the game's own, with their counts, menus and controller navigation
 - Works in a fight too
 - Settings, on by default: Options > AddOns > Gamepad Bag Layout, or /gbl

@@ -49,7 +49,7 @@ function BagLayout.RegisterSettings()
         "Puts your bags' buttons on their own row at the top of the controller's bag window.\n\n"
         .. "• Left to right: the backpack, bag 1 to 4, then the keyring\n"
         .. "• Your items fill the rows below, in the game's order\n"
-        .. "• The window grows by a row when it needs to\n\n"
+        .. "• Moving with the controller goes to the button beside you\n\n"
         .. "Turned off, each sits after its bag's items again.")
     local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone on that row",
         "Puts your Hearthstone at the right end of the bag row.\n\n"
