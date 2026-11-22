@@ -316,6 +316,25 @@ test("a tint behind the bags, from the backpack's to the last; none when off", f
     eq(#ContainerFrameCombinedBags.textures, 1, "one texture, made once")
 end)
 
+test("the tint's color and strength come from the settings", function()
+    local addon = start()
+    startWatching(addon)
+    local tint
+    layOut(true)
+    tint = ContainerFrameCombinedBags.textures[1]
+    local colored = {}
+    tint.SetColorTexture = function(_, ...) colored = { ... } end
+    GamepadBagLayoutDB.tintColor, GamepadBagLayoutDB.tintStrength = "ff00ff80", 50
+    addon.BagTint.ApplyColor()
+    eq(colored[1], 0, "red")
+    eq(colored[2], 1, "green")
+    eq(colored[3], 128 / 255, "blue")
+    eq(colored[4], 0.5, "strength")
+    GamepadBagLayoutDB.tintColor = "not a color"
+    addon.BagTint.ApplyColor()
+    eq(colored[3], 255 / 255, "a broken color falls back to the default blue")
+end)
+
 test("items keep the game's order, closed up", function()
     local addon = start()
     startWatching(addon)

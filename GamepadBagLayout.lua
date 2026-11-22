@@ -7,7 +7,7 @@
 --   GamepadBagLayout.lua   saved settings, the settings page, events, /gbl
 --   BagButtons.lua         where the bag buttons go in the window
 --   Hearthstone.lua        finds the Hearthstone's slot; the cursor starts on it
---   BagTint.lua            a faint tint behind the bag buttons
+--   BagTint.lua            a tint behind the bag buttons
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 local ADDON_NAME = ...
@@ -15,7 +15,9 @@ local ADDON_NAME = ...
 local BagLayout = {
     -- enabled: the bag buttons first in the window's grid (its bottom row).
     -- hearthstone: the Hearthstone at the top left; the cursor starts on it.
-    DEFAULTS = { enabled = true, hearthstone = true },
+    -- tintColor ("aarrggbb", as the game's color swatch writes it) and
+    -- tintStrength (0 to 100 %): the tint behind the bag buttons.
+    DEFAULTS = { enabled = true, hearthstone = true, tintColor = "ff409cff", tintStrength = 35 },
 }
 _G.GamepadBagLayout = BagLayout
 
@@ -51,12 +53,27 @@ function BagLayout.RegisterSettings()
         "Puts your bags' buttons together at the bottom of the controller's bag window.\n\n"
         .. "• Left to right: the backpack, bag 1 and on, the reagent bag\n"
         .. "• Your items keep the game's order above them\n"
-        .. "• A faint gold tint sets your bags apart\n\n"
+        .. "• A tint sets your bags apart (its color below)\n\n"
         .. "Turned off, each sits after its bag's items again.")
     local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone at the top",
         "Puts your Hearthstone at the top of your bags, ready to use when they open.\n\n"
         .. "The cursor starts on it, outside a fight. Turned off, it stays among your items.")
     if type(hearthstoneRow) == "table" and type(hearthstoneRow.Indent) == "function" then hearthstoneRow:Indent() end
+
+    local function onTintChanged() BagLayout.BagTint.ApplyColor() end
+    local colorSetting = Settings.RegisterAddOnSetting(category, "GamepadBagLayout_tintColor", "tintColor", settings,
+        Settings.VarType.String, "Bag tint color", BagLayout.DEFAULTS.tintColor)
+    Settings.SetOnValueChangedCallback("GamepadBagLayout_tintColor", onTintChanged)
+    Settings.CreateColorSwatch(category, colorSetting,
+        "The color behind your bags' buttons.\n\nPick it to set them apart from your items.")
+    local strengthSetting = Settings.RegisterAddOnSetting(category, "GamepadBagLayout_tintStrength", "tintStrength",
+        settings, Settings.VarType.Number, "Bag tint strength", BagLayout.DEFAULTS.tintStrength)
+    Settings.SetOnValueChangedCallback("GamepadBagLayout_tintStrength", onTintChanged)
+    local strengthOptions = Settings.CreateSliderOptions(0, 100, 5)
+    strengthOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
+        function(value) return string.format("%d%%", value) end)
+    Settings.CreateSlider(category, strengthSetting, strengthOptions,
+        "How strong the color behind your bags is.\n\nAt 0% there's none.")
 
     if BagLayout.AddRelatedAddonButtons then BagLayout.AddRelatedAddonButtons(layout) end   -- RelatedAddons.lua
     Settings.RegisterAddOnCategory(category)
