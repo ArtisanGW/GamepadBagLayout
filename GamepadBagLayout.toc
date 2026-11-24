@@ -5,6 +5,7 @@
 ## Version: @project-version@
 ## SavedVariables: GamepadBagLayoutDB
 ## Category: Private
+## IconTexture: Interface\AddOns\GamepadBagLayout\Media\icon-64.png
 
 GamepadBagLayout.lua
 Hearthstone.lua

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Gamepad Bag Layout: the bag window's slots, the Hearthstone (a tan stone with a teal swirl) in the
+       top-left slot with the pink cursor chevron on it, and the bags' buttons together in a yellow row at the bottom.
+       Palette as Alt Courier's icon: navy, teal, pastel pink, yellow and tan. -->
+  <rect x="0" y="0" width="512" height="512" fill="#15202E"/>
+
+  <!-- the bag window -->
+  <rect x="64" y="56" width="384" height="400" rx="32" fill="none" stroke="#5BE0C8" stroke-width="16"/>
+  <!-- its slots: 3 rows of 4 -->
+  <g fill="none" stroke="#5BE0C8" stroke-width="8" opacity="0.55">
+    <rect x="186" y="92" width="64" height="64" rx="14"/><rect x="268" y="92" width="64" height="64" rx="14"/><rect x="350" y="92" width="64" height="64" rx="14"/>
+    <rect x="104" y="174" width="64" height="64" rx="14"/><rect x="186" y="174" width="64" height="64" rx="14"/><rect x="268" y="174" width="64" height="64" rx="14"/><rect x="350" y="174" width="64" height="64" rx="14"/>
+    <rect x="104" y="256" width="64" height="64" rx="14"/><rect x="186" y="256" width="64" height="64" rx="14"/><rect x="268" y="256" width="64" height="64" rx="14"/><rect x="350" y="256" width="64" height="64" rx="14"/>
+  </g>
+  <!-- the Hearthstone's slot, top left, where the cursor starts -->
+  <rect x="104" y="92" width="64" height="64" rx="14" fill="none" stroke="#5BE0C8" stroke-width="8"/>
+  <ellipse cx="136" cy="126" rx="22" ry="25" fill="#D9B48F"/>
+  <path d="M 136 126 m -2 0 a 4 4 0 1 1 8 0 a 9 9 0 1 1 -16 0 a 14 14 0 1 1 26 2" fill="none" stroke="#5BE0C8" stroke-width="5" stroke-linecap="round"/>
+  <!-- the controller's cursor on it: a pink chevron pointing in -->
+  <path d="M 52 98 L 80 124 L 52 150" fill="#15202E" stroke="#F4A7B9" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- the bags' buttons, together in a row at the bottom -->
+  <line x1="96" y1="348" x2="416" y2="348" stroke="#5BE0C8" stroke-width="8" stroke-linecap="round" opacity="0.55"/>
+  <g fill="#F6D98B">
+    <path d="M 120 404 Q 120 372 142 372 H 154 Q 176 372 176 404 Q 176 422 148 422 Q 120 422 120 404 Z"/>
+    <path d="M 196 404 Q 196 372 218 372 H 230 Q 252 372 252 404 Q 252 422 224 422 Q 196 422 196 404 Z"/>
+    <path d="M 272 404 Q 272 372 294 372 H 306 Q 328 372 328 404 Q 328 422 300 422 Q 272 422 272 404 Z"/>
+    <path d="M 348 404 Q 348 372 370 372 H 382 Q 404 372 404 404 Q 404 422 376 422 Q 348 422 348 404 Z"/>
+  </g>
+  <g fill="none" stroke="#D9A93F" stroke-width="6" stroke-linecap="round">
+    <path d="M 136 372 Q 148 360 160 372"/><path d="M 212 372 Q 224 360 236 372"/>
+    <path d="M 288 372 Q 300 360 312 372"/><path d="M 364 372 Q 376 360 388 372"/>
+  </g>
+</svg>
