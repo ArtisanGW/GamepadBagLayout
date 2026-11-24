@@ -1,10 +1,10 @@
 -- GamepadBagLayout: in the controller's Combined Backpack, puts the bag buttons
 -- together at the bottom of the window instead of scattered among the items, and
 -- the Hearthstone at the top, where the cursor starts.
--- Settings sit in the game's Options > AddOns > Gamepad Bag Layout, or /gbl.
+-- Settings sit in the game's Options > AddOns > Gamepad Bag Layout, or /gpbl.
 --
 -- Files, one job each:
---   GamepadBagLayout.lua   saved settings, the settings page, events, /gbl
+--   GamepadBagLayout.lua   saved settings, the settings page, events, /gpbl
 --   BagButtons.lua         where the bag buttons go in the window
 --   Hearthstone.lua        finds the Hearthstone's slot; the cursor starts on it
 --   BagTint.lua            a tint behind the bag buttons
@@ -93,8 +93,8 @@ eventFrame:SetScript("OnEvent", function(_, event, name)
     BagLayout.Hearthstone.Watch()
 end)
 
--- /gbl (or /gamepadbaglayout) opens the settings.
-SLASH_GAMEPADBAGLAYOUT1 = "/gbl"
+-- /gpbl (or /gamepadbaglayout) opens the settings.
+SLASH_GAMEPADBAGLAYOUT1 = "/gpbl"
 SLASH_GAMEPADBAGLAYOUT2 = "/gamepadbaglayout"
 SlashCmdList.GAMEPADBAGLAYOUT = function()
     BagLayout.Open()

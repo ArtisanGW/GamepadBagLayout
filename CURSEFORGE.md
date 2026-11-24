@@ -12,6 +12,6 @@ With the controller UI on, the game's bag window puts each bag's button (its fre
 - A tint behind your bags sets them apart: blue by default, its color and strength yours to pick in the game's color picker, with the controller's sticks too
 - Your Hearthstone at the top left, where the cursor starts when your bags open (outside a fight), ready to use
 - Nothing is replaced: the window keeps the game's own slots, and the buttons are the game's, with their counts, menus and controller navigation
-- Settings, on by default: Options > AddOns > Gamepad Bag Layout, or /gbl
+- Settings, on by default: Options > AddOns > Gamepad Bag Layout, or /gpbl
 
 A vanilla addon: it needs no other addon.
