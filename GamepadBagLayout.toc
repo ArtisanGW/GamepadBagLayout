@@ -4,7 +4,7 @@
 ## Author: Artisan
 ## Version: @project-version@
 ## SavedVariables: GamepadBagLayoutDB
-## Category: Gamepad
+## Category: Private
 
 GamepadBagLayout.lua
 Hearthstone.lua
