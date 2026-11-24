@@ -1,4 +1,5 @@
 **Summary:** Puts your bags' buttons together at the bottom of the controller's bag window, and your Hearthstone where the cursor starts.
+**Categories:** Bags & Inventory
 
 # Gamepad Bag Layout
 
