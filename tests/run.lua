@@ -4,12 +4,12 @@
 -- GBL_TEST="part of a name" runs only the tests whose name holds it.
 local failed, passed = 0, 0
 local only = os.getenv("GBL_TEST")
-local function test(name, fn)
+local function test(name, testBody)
     if only and not name:find(only, 1, true) then return end
-    local ok, err = xpcall(fn, debug.traceback)
+    local ok, err = xpcall(testBody, debug.traceback)
     if ok then passed = passed + 1 else failed = failed + 1; print("FAIL " .. name .. "\n" .. err) end
 end
-local function eq(actual, expected, message)
+local function expectEqual(actual, expected, message)
     if actual ~= expected then error((message or "") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
@@ -101,8 +101,8 @@ local function boot(options)
     -- game.hearthstoneAt = { bagID, slotID }: where the Hearthstone is.
     _G.C_Container = {
         GetContainerItemID = function(bagID, slotID)
-            local at = game.hearthstoneAt
-            if at and at[1] == bagID and at[2] == slotID then return 6948 end
+            local point = game.hearthstoneAt
+            if point and point[1] == bagID and point[2] == slotID then return 6948 end
             return 1000 + slotID
         end,
     }
@@ -237,10 +237,10 @@ local function checkSameCells(label)
     local shown = shownFrames()
     local used = {}
     for _, frame in ipairs(shown) do
-        local at = position(frame)
-        eq(used[at], nil, label .. ": cell " .. at .. " used once")
-        used[at] = true
-        eq(at >= 1 and at <= #shown, true, label .. ": " .. frame.name .. " in one of the game's cells")
+        local point = position(frame)
+        expectEqual(used[point], nil, label .. ": cell " .. point .. " used once")
+        used[point] = true
+        expectEqual(point >= 1 and point <= #shown, true, label .. ": " .. frame.name .. " in one of the game's cells")
     end
 end
 
@@ -249,9 +249,9 @@ test("the bag buttons first: bottom right, left to right: backpack, bag 1 to 4, 
     startWatching(addon)
     local list = layOut(true)   -- 40 items and 6 bag buttons: 46 cells
     local order = { 0, 1, 2, 3, 4, -2 }
-    for i, bagID in ipairs(order) do eq(position(game.buttons[bagID]), 7 - i, "bag " .. bagID) end
+    for i, bagID in ipairs(order) do expectEqual(position(game.buttons[bagID]), 7 - i, "bag " .. bagID) end
     checkSameCells("with the keyring")
-    eq(#list, 46, "every cell of the game's")
+    expectEqual(#list, 46, "every cell of the game's")
 end)
 
 test("the Hearthstone last: the top row's first slot from the left", function()
@@ -259,9 +259,9 @@ test("the Hearthstone last: the top row's first slot from the left", function()
     startWatching(addon)
     game.hearthstoneAt = { 2, 3 }
     layOut(true, 17)   -- 41 items and 6 bag buttons: 47 cells, 7 on the top row
-    eq(position(itemButton(2, 3)), 47, "the last cell")
-    eq(cell(itemButton(2, 3)), 4, "on the top row")
-    eq(position(game.buttons[0]), 6, "the backpack's still in the bottom row")
+    expectEqual(position(itemButton(2, 3)), 47, "the last cell")
+    expectEqual(cell(itemButton(2, 3)), 4, "on the top row")
+    expectEqual(position(game.buttons[0]), 6, "the backpack's still in the bottom row")
     checkSameCells("with the Hearthstone")
 end)
 
@@ -270,11 +270,11 @@ test("Hearthstone setting off: it stays among the items, in the game's order", f
     startWatching(addon)
     game.hearthstoneAt = { 4, 1 }   -- the game's first item
     layOut(true)
-    eq(position(itemButton(4, 1)), 7, "where the game's order puts it, after the bags")
-    eq(position(itemButton(4, 2)), 8, "the next one after it")
+    expectEqual(position(itemButton(4, 1)), 7, "where the game's order puts it, after the bags")
+    expectEqual(position(itemButton(4, 2)), 8, "the next one after it")
     game.hearthstoneAt = { 2, 3 }
     ContainerFrameCombinedBags:UpdateItemLayout()
-    eq(position(itemButton(2, 3)) < 46, true, "not moved to the last cell")
+    expectEqual(position(itemButton(2, 3)) < 46, true, "not moved to the last cell")
 end)
 
 test("the cursor starts on the Hearthstone when the bags open", function()
@@ -282,39 +282,39 @@ test("the cursor starts on the Hearthstone when the bags open", function()
     startWatching(addon)
     game.hearthstoneAt = { 2, 3 }
     layOut(true)
-    eq(gamePicksStart(), itemButton(2, 3), "the Hearthstone")
+    expectEqual(gamePicksStart(), itemButton(2, 3), "the Hearthstone")
 end)
 
 test("the cursor stays on the game's pick: in a fight, setting off, no Hearthstone", function()
     local addon = start()
     startWatching(addon)
     layOut(true)
-    eq(gamePicksStart(), game.buttons[0], "no Hearthstone: the backpack's")
+    expectEqual(gamePicksStart(), game.buttons[0], "no Hearthstone: the backpack's")
     game.hearthstoneAt = { 2, 3 }
     game.combat = true
-    eq(gamePicksStart(), game.buttons[0], "in a fight: the backpack's")
+    expectEqual(gamePicksStart(), game.buttons[0], "in a fight: the backpack's")
     game.combat = false
     GamepadBagLayoutDB.hearthstone = false
-    eq(gamePicksStart(), game.buttons[0], "setting off: the backpack's")
+    expectEqual(gamePicksStart(), game.buttons[0], "setting off: the backpack's")
     GamepadBagLayoutDB.hearthstone = true
     SmartNavigation:SetTargetButtonForFrame(newFrame("another window"), game.buttons[1])
-    eq(game.target.button, game.buttons[1], "another window's pick left alone")
+    expectEqual(game.target.button, game.buttons[1], "another window's pick left alone")
 end)
 
 test("a tint behind the bags, from the backpack's to the last; none when off", function()
     local addon = start()
     startWatching(addon)
     layOut(true)
-    eq(addon.BagTint.IsShown(), true, "shown")
+    expectEqual(addon.BagTint.IsShown(), true, "shown")
     local tint = ContainerFrameCombinedBags.textures[1]
-    eq(tint.points[1][2], game.buttons[0], "from the backpack's")
-    eq(tint.points[2][2], game.buttons[-2], "to the keyring's")
+    expectEqual(tint.points[1][2], game.buttons[0], "from the backpack's")
+    expectEqual(tint.points[2][2], game.buttons[-2], "to the keyring's")
     GamepadBagLayoutDB.enabled = false
     addon.BagButtons.Refresh()
-    eq(addon.BagTint.IsShown(), false, "hidden when turned off")
+    expectEqual(addon.BagTint.IsShown(), false, "hidden when turned off")
     GamepadBagLayoutDB.enabled = true
     addon.BagButtons.Refresh()
-    eq(#ContainerFrameCombinedBags.textures, 1, "one texture, made once")
+    expectEqual(#ContainerFrameCombinedBags.textures, 1, "one texture, made once")
 end)
 
 test("the tint's color and strength come from the settings", function()
@@ -327,13 +327,13 @@ test("the tint's color and strength come from the settings", function()
     tint.SetColorTexture = function(_, ...) colored = { ... } end
     GamepadBagLayoutDB.tintColor, GamepadBagLayoutDB.tintStrength = "ff00ff80", 50
     addon.BagTint.ApplyColor()
-    eq(colored[1], 0, "red")
-    eq(colored[2], 1, "green")
-    eq(colored[3], 128 / 255, "blue")
-    eq(colored[4], 0.5, "strength")
+    expectEqual(colored[1], 0, "red")
+    expectEqual(colored[2], 1, "green")
+    expectEqual(colored[3], 128 / 255, "blue")
+    expectEqual(colored[4], 0.5, "strength")
     GamepadBagLayoutDB.tintColor = "not a color"
     addon.BagTint.ApplyColor()
-    eq(colored[3], 255 / 255, "a broken color falls back to the default blue")
+    expectEqual(colored[3], 255 / 255, "a broken color falls back to the default blue")
 end)
 
 test("the swatch sets the color; the picker's opacity bar, the strength", function()
@@ -342,17 +342,17 @@ test("the swatch sets the color; the picker's opacity bar, the strength", functi
     layOut(true)
     local clock = 100
     _G.GetTime = function() return clock end
-    eq(addon.TintPicker.SwatchColor(), "ff409cff", "the swatch shows the color, alpha ff")
-    eq(addon.TintPicker.owner.OpenedThePicker(), true, "the picker showing now is ours")
-    eq(addon.TintPicker.owner.Opacity(), 0.35, "the strength as the opacity bar")
+    expectEqual(addon.TintPicker.SwatchColor(), "ff409cff", "the swatch shows the color, alpha ff")
+    expectEqual(addon.TintPicker.owner.OpenedThePicker(), true, "the picker showing now is ours")
+    expectEqual(addon.TintPicker.owner.Opacity(), 0.35, "the strength as the opacity bar")
     addon.TintPicker.SetSwatchColor("ffFF0000")
     addon.TintPicker.owner.SetOpacity(0.6)
-    eq(GamepadBagLayoutDB.tintColor, "ffff0000", "the color picked")
-    eq(GamepadBagLayoutDB.tintStrength, 60, "the strength picked")
+    expectEqual(GamepadBagLayoutDB.tintColor, "ffff0000", "the color picked")
+    expectEqual(GamepadBagLayoutDB.tintStrength, 60, "the strength picked")
     addon.TintPicker.SetSwatchColor("broken")
-    eq(GamepadBagLayoutDB.tintColor, "ffff0000", "a broken value leaves it")
+    expectEqual(GamepadBagLayoutDB.tintColor, "ffff0000", "a broken value leaves it")
     clock = 101
-    eq(addon.TintPicker.owner.OpenedThePicker(), false, "a picker shown later is someone else's")
+    expectEqual(addon.TintPicker.owner.OpenedThePicker(), false, "a picker shown later is someone else's")
     _G.GetTime = nil
 end)
 
@@ -385,15 +385,15 @@ test("the picker shows the D-pad up/down icon when it's ours, on a controller", 
     game.private.PickerSticks.Watch(addon.TintPicker.owner)
     addon.TintPicker.SwatchColor()   -- the swatch reads its color, then opens the picker
     hooks.OnShow()
-    eq(picker.hasOpacity, true, "the opacity bar")
-    eq(hint.shown, true, "the hint shown")
-    eq(hint.atlas, "dpadupdown-normal", "the game's D-pad up/down art")
-    eq(hint.point[2], colorSelect.Alpha, "under the opacity bar")
+    expectEqual(picker.hasOpacity, true, "the opacity bar")
+    expectEqual(hint.shown, true, "the hint shown")
+    expectEqual(hint.atlas, "dpadupdown-normal", "the game's D-pad up/down art")
+    expectEqual(hint.point[2], colorSelect.Alpha, "under the opacity bar")
     hooks.OnHide()
-    eq(hint.shown, false, "hidden with the picker")
+    expectEqual(hint.shown, false, "hidden with the picker")
     clock = 105
     hooks.OnShow()   -- someone else's picker
-    eq(hint.shown, false, "not on someone else's picker")
+    expectEqual(hint.shown, false, "not on someone else's picker")
     _G.GetTime, _G.InputUtil, _G.ColorPickerFrame, _G.InputIconTextureSetUtility = nil, nil, nil, nil
 end)
 
@@ -404,18 +404,18 @@ test("items keep the game's order, closed up", function()
     local previous = 5   -- after the 5 bag buttons
     for _, frame in ipairs(list) do
         if not frame.name:find("button", 1, true) then
-            eq(position(frame), previous + 1, frame.name .. " right after the one before")
+            expectEqual(position(frame), previous + 1, frame.name .. " right after the one before")
             previous = position(frame)
         end
     end
-    eq(previous, 5 + 4 * 6 + 16, "every item")
+    expectEqual(previous, 5 + 4 * 6 + 16, "every item")
 end)
 
 test("turned off: the game's own layout stays", function()
     local addon = start({ saved = { enabled = false } })
     startWatching(addon)
     local list = layOut(true)
-    for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
+    for i, frame in ipairs(list) do expectEqual(position(frame), i, frame.name) end
 end)
 
 test("turning it off lays the window out again as the game does", function()
@@ -424,8 +424,8 @@ test("turning it off lays the window out again as the game does", function()
     local list = layOut(true, 17)
     GamepadBagLayoutDB.enabled = false
     addon.BagButtons.Refresh()
-    for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
-    eq(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height again")
+    for i, frame in ipairs(list) do expectEqual(position(frame), i, frame.name) end
+    expectEqual(ContainerFrameCombinedBags:GetHeight(), 5 * 42 + 100, "the game's height again")
 end)
 
 test("items of a collapsed bag, which the game leaves out, aren't counted", function()
@@ -435,9 +435,9 @@ test("items of a collapsed bag, which the game leaves out, aren't counted", func
     game.buttons[3].isCollapsed = true
     ContainerFrameCombinedBags:UpdateItemLayout()   -- now left out, at their old places
     local shownItems = 4 * 6 + 16 - 6
-    eq(position(game.buttons[0]), 5, "the backpack's fifth from the right")
-    eq(position(game.buttons[4]), 1, "bag 4's in the bottom right")
-    eq(shownItems + 5, #shownFrames(), "every shown item counted")
+    expectEqual(position(game.buttons[0]), 5, "the backpack's fifth from the right")
+    expectEqual(position(game.buttons[4]), 1, "bag 4's in the bottom right")
+    expectEqual(shownItems + 5, #shownFrames(), "every shown item counted")
     checkSameCells("bag 3 collapsed")
 end)
 
@@ -447,7 +447,7 @@ test("a protected button in a fight: nothing moves", function()
     game.combat = true
     game.buttons[1].protected = true
     local list = layOut(true)
-    for i, frame in ipairs(list) do eq(position(frame), i, frame.name) end
+    for i, frame in ipairs(list) do expectEqual(position(frame), i, frame.name) end
 end)
 
 test("watching twice hooks once", function()
@@ -455,14 +455,14 @@ test("watching twice hooks once", function()
     startWatching(addon)
     addon.BagButtons.Watch()
     layOut(true)
-    eq(addon.BagButtons.regroupedCount, 1, "laid out again once")
+    expectEqual(addon.BagButtons.regroupedCount, 1, "laid out again once")
 end)
 
 test("saved keys the addon doesn't use are dropped", function()
     local addon = start({ saved = { enabled = false, old = 1 } })
     local settings = addon.GetSettings()
-    eq(settings.old, nil, "dropped")
-    eq(settings.enabled, false, "kept")
+    expectEqual(settings.old, nil, "dropped")
+    expectEqual(settings.enabled, false, "kept")
 end)
 
 print(passed .. " passed, " .. failed .. " failed")
