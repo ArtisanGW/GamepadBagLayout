@@ -1,9 +1,11 @@
-**Summary:** Puts your bags' buttons together at the bottom of the controller's bag window, and your Hearthstone where the cursor starts.
+**Summary:**  
 **Categories:** Bags & Inventory
 
 # Gamepad Bag Layout
 
 With the controller UI on, the game's bag window puts each bag's button (its free slots, its menu) right after that bag's items, so they end up scattered across the window. Gamepad Bag Layout puts them together at the bottom.
+
+[![Support me on Ko-fi](https://images.weserv.nl/?url=storage.ko-fi.com/cdn/kofi5.png&h=36)](https://ko-fi.com/artisangw)
 
 - Left to right: the backpack, bag 1 and on, the reagent bag
 - Your items keep the game's order above them
