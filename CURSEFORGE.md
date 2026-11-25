@@ -1,4 +1,4 @@
-**Summary:**  
+**Summary:** Puts your bags' buttons together at the bottom of the controller's bag window, and your Hearthstone at the top.  
 **Categories:** Bags & Inventory
 
 # Gamepad Bag Layout
