@@ -146,6 +146,9 @@ local function boot(options)
     _G.SmartNavigation = {
         SetTargetButtonForFrame = function(_, frame, button) game.target = { frame = frame, button = button } end,
     }
+    -- Its mark that keeps a button out of the controller's reach (Utility.lua:46).
+    _G.SmartNavigation_MarkFrameIgnored = function(frame) frame.smartNavigationIgnored = true end
+    _G.SmartNavigation_ClearIgnoreStatus = function(frame) frame.smartNavigationIgnored = nil end
     _G.GamepadBagBar = { GetBagButton = function(_, bagID) return game.buttons[bagID] end }
     game.moneyBar = newFrame("money bar")
     function window:GetInitialItemAnchor() return { relativeTo = game.moneyBar } end
@@ -291,6 +294,34 @@ test("locked slots (no authenticator): left of the bags, not at the top", functi
     expectEqual(position(itemButton(2, 3)), 50, "the Hearthstone still last")
     expectEqual(position(game.buttons[0]), 6, "the bags still bottom right")
     checkSameCells("with locked slots")
+end)
+
+test("the authenticator + on the locked slots: the controller skips it while on, not when off", function()
+    local addon = start()
+    startWatching(addon)
+    local addSlotsButton = newFrame("add slots button")
+    ContainerFrameCombinedBags.AddSlotsButton = addSlotsButton
+    game.combat = true
+    layOut(true, 20, 4)
+    expectEqual(addSlotsButton.smartNavigationIgnored, nil, "not marked in a fight")
+    game.combat = false
+    layOut(true, 20, 4)
+    expectEqual(addSlotsButton.smartNavigationIgnored, true, "marked out of a fight")
+    GamepadBagLayoutDB.enabled = false
+    addon.BagButtons.Refresh()
+    expectEqual(addSlotsButton.smartNavigationIgnored, nil, "turned off: the mark is gone")
+end)
+
+test("the + already skipped by the game: left as the game set it", function()
+    local addon = start()
+    startWatching(addon)
+    local addSlotsButton = newFrame("add slots button")
+    addSlotsButton.smartNavigationIgnored = true
+    ContainerFrameCombinedBags.AddSlotsButton = addSlotsButton
+    layOut(true, 20, 4)
+    GamepadBagLayoutDB.enabled = false
+    addon.BagButtons.Refresh()
+    expectEqual(addSlotsButton.smartNavigationIgnored, true, "the game's mark stays")
 end)
 
 test("Hearthstone setting off: it stays among the items, in the game's order", function()

@@ -9,7 +9,7 @@
 -- wheel; once the bags open, a timer runs for the test, then the reload box.
 local BagLayout = _G.GamepadBagLayout
 
-local Debug = { RUN_ID = 1, TEST_SECONDS = 40, SECONDS_BEFORE_GRID = 0.5 }
+local Debug = { RUN_ID = 3, TEST_SECONDS = 40, SECONDS_BEFORE_GRID = 0.5 }
 BagLayout.Debug = Debug
 
 local HEARTHSTONE_ITEM_ID = 6948

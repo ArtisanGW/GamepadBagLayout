@@ -3,6 +3,7 @@
 ## 1.1.0
 
 - Backpack slots locked until you add an authenticator now sit next to your bags, at the bottom, instead of next to your Hearthstone at the top
+- Moving left or right in your bags with the controller no longer drops the cursor onto the authenticator + on the locked slots
 
 ## 1.0.1
 

@@ -133,6 +133,32 @@ function BagButtons.GameOrder(window, bagBar)
     return placed
 end
 
+-- The game's "add an authenticator" button (the + on the locked slots,
+-- ContainerFrameExtendedSlotPack, ContainerFrame.lua:2694-2726) sits across
+-- the edge between two cells, so the controller's grid takes it for a column
+-- of its own, one button tall: moving left or right into that column drops the
+-- cursor onto it from any row (SmartNavigation.lua:1430-1461). While the
+-- layout is on, the controller skips it, through the game's own mark
+-- (SmartNavigation_MarkFrameIgnored, Utility.lua:46, which addons may set
+-- outside a fight); the locked slots under it say the same in their tooltip,
+-- and the mouse still clicks it. The mark is taken off when the layout is
+-- turned off, unless the game had put it there itself.
+local markedAddSlotsButton = nil
+
+local function keepAddSlotsButtonOffGrid(window, layoutOn)
+    local button = window.AddSlotsButton
+    local markIgnored = rawget(_G, "SmartNavigation_MarkFrameIgnored")
+    local clearIgnored = rawget(_G, "SmartNavigation_ClearIgnoreStatus")
+    if not (button and markIgnored and clearIgnored) or InCombatLockdown() or button:IsForbidden() then return end
+    if layoutOn and not markedAddSlotsButton and button.smartNavigationIgnored ~= true then
+        markIgnored(button)
+        markedAddSlotsButton = button
+    elseif not layoutOn and markedAddSlotsButton then
+        clearIgnored(markedAddSlotsButton)
+        markedAddSlotsButton = nil
+    end
+end
+
 local function canMove(frame)
     if frame:IsForbidden() then return false end
     return not (InCombatLockdown() and frame:IsProtected())
@@ -142,7 +168,9 @@ end
 -- (bottom), the Hearthstone last (top).
 local function afterLayout(window)
     BagLayout.BagTint.Hide()
-    if not BagLayout.GetSettings().enabled then return end
+    local layoutOn = BagLayout.GetSettings().enabled
+    if not window:IsForbidden() then keepAddSlotsButtonOffGrid(window, layoutOn) end
+    if not layoutOn then return end
     local bagBar = rawget(_G, "GamepadBagBar")
     if not bagBar or window:IsForbidden() then return end
     local placed = BagButtons.GameOrder(window, bagBar)
