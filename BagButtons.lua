@@ -23,6 +23,10 @@
 -- as on the game's own layout. Nothing of the game's is replaced, and turned
 -- off, the game lays it out again on its own. Neither the window nor its
 -- buttons are protected, so this works in a fight too.
+-- Up on the backpack's button still jumps to the bag menu at the window's top
+-- left (sorting, filters), and down from there back to it: the game's own jump
+-- (ContainerFrame.lua:3566), the controller's only way to that menu. With the
+-- bags at the bottom it crosses the window; kept as it is.
 local BagLayout = _G.GamepadBagLayout
 
 local BagButtons = {}

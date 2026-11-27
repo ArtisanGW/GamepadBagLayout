@@ -3,7 +3,8 @@
 -- test driven from outside (devAddons/virtual_pad.py): each button it lands on
 -- (with its place in the game's navigation grid, SmartNavigation.lua:1332
 -- UpdateGrid, forever branch), the grid itself, and the controller button that
--- opens the game's wheel (OPENRADIAL, Blizzard_Gamepad/Bindings.xml:2).
+-- opens the game's wheel (OPENRADIAL, Blizzard_Gamepad/Bindings.xml:2), and
+-- each time the game moves the cursor, who moved it.
 -- Kept in GamepadBagLayoutDebugDB, written to disk on /reload.
 -- Once per RUN_ID, after login: a box on screen says which button opens the
 -- wheel; once the bags open, a timer runs for the test, then the reload box.
@@ -12,7 +13,7 @@
 -- the settings tooltip the controller's cursor opens on the first option.
 local BagLayout = _G.GamepadBagLayout
 
-local Debug = { RUN_ID = 4, OPTIONS_SHOT_ID = 3, TEST_SECONDS = 40, SECONDS_BEFORE_GRID = 0.5 }
+local Debug = { RUN_ID = 5, OPTIONS_SHOT_ID = 3, TEST_SECONDS = 50, SECONDS_BEFORE_GRID = 0.5 }
 BagLayout.Debug = Debug
 
 local HEARTHSTONE_ITEM_ID = 6948
@@ -120,6 +121,29 @@ local function startTimer(run)
     end)
 end
 
+-- Each button the game moves the controller's cursor to, with the calls that
+-- led there (file:line, above SmartNavigation:SelectButton) and whether the
+-- button it left had a settled place on screen (IsRectValid: without one,
+-- SmartNavigation.lua:1489 sends the cursor to the window's top-left button).
+local function watchSelections(run)
+    local smartNavigation = navigation()
+    if not smartNavigation or Debug.watchingSelections then return end
+    Debug.watchingSelections = true
+    local previous = nil
+    hooksecurefunc(smartNavigation, "SelectButton", function(_, button)
+        if run.done then return end
+        local callers = {}
+        for line in debugstack(2, 6, 0):gmatch("[^\n]+") do
+            local file, lineNumber = line:match("([%w_]+%.lua)[\"%]]*:(%d+)")
+            if file then callers[#callers + 1] = file .. ":" .. lineNumber end
+        end
+        local settled = previous and tostring(previous:IsRectValid()) or "-"
+        note(run, string.format("select %s (left %s, its rect valid: %s) from %s",
+            describe(button), describe(previous), settled, table.concat(callers, " < ")))
+        previous = button
+    end)
+end
+
 function Debug.Start()
     local saved = store()
     saved.runId = Debug.RUN_ID
@@ -130,6 +154,7 @@ function Debug.Start()
     startTime = GetTime()
     showBox("Bag test: open the bags from the wheel (" .. tostring(radialKey1) .. ")")
 
+    watchSelections(run)
     local watcher = CreateFrame("Frame")
     local lastButton, lastGrid, radialShown, bagsShown, timerStarted = nil, nil, false, false, false
     watcher:SetScript("OnUpdate", function(self)
