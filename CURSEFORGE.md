@@ -25,4 +25,6 @@ With the controller UI on, the game's bag window puts each bag's button (its fre
 
 ![Your bags at the bottom, the locked slots next to them](https://raw.githubusercontent.com/ArtisanGW/GamepadBagLayout/main/Media/screenshots/bags-at-the-bottom.png)
 
+![The settings: Options > AddOns > Gamepad Bag Layout](https://raw.githubusercontent.com/ArtisanGW/GamepadBagLayout/main/Media/screenshots/options.png)
+
 A vanilla addon: it needs no other addon.

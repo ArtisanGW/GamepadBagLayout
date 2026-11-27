@@ -7,9 +7,12 @@
 -- Kept in GamepadBagLayoutDebugDB, written to disk on /reload.
 -- Once per RUN_ID, after login: a box on screen says which button opens the
 -- wheel; once the bags open, a timer runs for the test, then the reload box.
+-- Once per OPTIONS_SHOT_ID, after login: opens the addon's settings page (as
+-- /gpbl does), for a screenshot taken from outside (spectacle), then hides
+-- the settings tooltip the controller's cursor opens on the first option.
 local BagLayout = _G.GamepadBagLayout
 
-local Debug = { RUN_ID = 4, TEST_SECONDS = 40, SECONDS_BEFORE_GRID = 0.5 }
+local Debug = { RUN_ID = 4, OPTIONS_SHOT_ID = 3, TEST_SECONDS = 40, SECONDS_BEFORE_GRID = 0.5 }
 BagLayout.Debug = Debug
 
 local HEARTHSTONE_ITEM_ID = 6948
@@ -167,4 +170,11 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:SetScript("OnEvent", function()
     events:UnregisterEvent("PLAYER_ENTERING_WORLD")
     if store().runId ~= Debug.RUN_ID then C_Timer.After(1, Debug.Start) end
+    if store().optionsShotId ~= Debug.OPTIONS_SHOT_ID then
+        store().optionsShotId = Debug.OPTIONS_SHOT_ID
+        C_Timer.After(1, function()
+            BagLayout.Open()
+            C_Timer.After(1, function() SettingsTooltip:Hide() end)
+        end)
+    end
 end)

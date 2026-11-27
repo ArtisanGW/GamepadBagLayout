@@ -296,6 +296,22 @@ test("locked slots (no authenticator): left of the bags, not at the top", functi
     checkSameCells("with locked slots")
 end)
 
+test("authenticator added: those slots are items again, in the game's order", function()
+    local addon = start()
+    startWatching(addon)
+    local list = layOut(false, 20)   -- 44 items, none locked, and 5 bag buttons
+    local previous = 5   -- after the 5 bag buttons
+    for _, frame in ipairs(list) do
+        if not frame.name:find("button", 1, true) then
+            expectEqual(position(frame), previous + 1, frame.name .. " right after the one before")
+            previous = position(frame)
+        end
+    end
+    for slotID = 17, 20 do
+        expectEqual(position(itemButton(0, slotID)), 5 + 4 * 6 + slotID, "slot " .. slotID .. " with the backpack's other slots")
+    end
+end)
+
 test("the authenticator + on the locked slots: the controller skips it while on, not when off", function()
     local addon = start()
     startWatching(addon)
