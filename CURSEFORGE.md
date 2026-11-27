@@ -22,10 +22,4 @@ With the controller UI on, the game's bag window puts each bag's button (its fre
 - Nothing is replaced: the window keeps the game's own slots, and the buttons are the game's, with their counts, menus and controller navigation
 - Settings, on by default: Options > AddOns > Gamepad Bag Layout, or /gpbl
 
-![Your Hearthstone at the top, where the cursor starts](https://raw.githubusercontent.com/ArtisanGW/GamepadBagLayout/main/Media/screenshots/hearthstone-at-the-top.png)
-
-![Your bags at the bottom, the locked slots next to them](https://raw.githubusercontent.com/ArtisanGW/GamepadBagLayout/main/Media/screenshots/bags-at-the-bottom.png)
-
-![The settings: Options > AddOns > Gamepad Bag Layout](https://raw.githubusercontent.com/ArtisanGW/GamepadBagLayout/main/Media/screenshots/options.png)
-
 A vanilla addon: it needs no other addon.

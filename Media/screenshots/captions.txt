@@ -1,0 +1,2 @@
+hearthstone-at-the-top.png: Your Hearthstone at the top, where the cursor starts
+bags-at-the-bottom.png: Your bags at the bottom, the locked slots next to them
