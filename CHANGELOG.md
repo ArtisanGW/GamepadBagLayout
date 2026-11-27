@@ -1,5 +1,9 @@
 # Gamepad Bag Layout
 
+## 1.1.0
+
+- Backpack slots locked until you add an authenticator now sit next to your bags, at the bottom, instead of next to your Hearthstone at the top
+
 ## 1.0.1
 
 - The chat command is now /gpbl (or /gamepadbaglayout); /gbl no longer works

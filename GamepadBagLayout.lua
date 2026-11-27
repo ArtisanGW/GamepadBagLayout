@@ -56,6 +56,7 @@ function BagLayout.RegisterSettings()
         "Puts your bags' buttons together at the bottom of the controller's bag window.\n\n"
         .. "• Left to right: the backpack, bag 1 and on, the reagent bag\n"
         .. "• Your items keep the game's order above them\n"
+        .. "• Slots locked until you add an authenticator: next to your bags\n"
         .. "• A tint sets your bags apart (its color below)\n\n"
         .. "Turned off, each sits after its bag's items again.")
     local hearthstoneRow = addCheckbox("hearthstone", "Hearthstone at the top",

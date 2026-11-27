@@ -1,7 +1,8 @@
 -- Moves the bag buttons of the controller's Combined Backpack to the start of
 -- its grid (the bottom row) and the Hearthstone to its end (the top), so the
--- window reads, top to bottom: the Hearthstone, the items, the bags. With the controller UI on, the game
--- puts one button per bag (its free slots, its menu) into the window's grid,
+-- window reads, top to bottom: the Hearthstone, the items, the locked slots, the bags.
+-- With the controller UI on, the game puts one button per bag (its free slots,
+-- its menu) into the window's grid,
 -- each right after that bag's items (ContainerFrameMixin:UpdateItemLayout,
 -- forever branch Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua:1080-1105),
 -- so they end up scattered among the items.
@@ -12,7 +13,9 @@
 -- GetInitialItemAnchor, ContainerFrame.lua:3032); only who sits in them changes:
 -- the bag buttons first, so they read left to right at the right end of the
 -- bottom row (the backpack's, bag 1 and on, the reagent bag's, the keyring's),
--- then the items in the game's order, then the Hearthstone (Hearthstone.lua),
+-- then the backpack's slots locked until the account has an authenticator
+-- (left of the bags, out of the way: the game puts them at the top), then the
+-- items in the game's order, then the Hearthstone (Hearthstone.lua),
 -- in the top row's first slot from the left. No cell is added
 -- or left empty (a tint behind the bags sets them apart: BagTint.lua), so the
 -- window keeps the game's size and the controller's grid
@@ -44,10 +47,17 @@ function BagButtons.Ordered(bagBar)
     return ordered
 end
 
+-- A backpack slot locked until the account has an authenticator: the game marks
+-- it extended and shows a padlock on it (ContainerFrameItemButtonMixin:
+-- UpdateExtended, ContainerFrame.lua:2024-2045).
+local function isLockedSlot(frame)
+    return type(frame.IsExtended) == "function" and frame:IsExtended() == true
+end
+
 -- The game's grid in its new order: the bag buttons, right to left, so they
--- read left to right in the window; the items (in the game's order); then the
--- Hearthstone (optional), last, so top left. Also returns how many bag
--- buttons lead the list.
+-- read left to right in the window; the locked slots, next to them; the items
+-- (in the game's order); then the Hearthstone (optional), last, so top left.
+-- Also returns how many bag buttons lead the list.
 function BagButtons.Reorder(frames, bagBar, hearthstone)
     local present = {}
     for _, frame in ipairs(frames) do present[frame] = true end
@@ -59,11 +69,19 @@ function BagButtons.Reorder(frames, bagBar, hearthstone)
         end
     end
     if #bagButtons == 0 then return nil end
-    local ordered = {}
-    for i = #bagButtons, 1, -1 do ordered[#ordered + 1] = bagButtons[i] end
+    local ordered, lockedSlots, items = {}, {}, {}
     for _, frame in ipairs(frames) do
-        if not isBagButton[frame] and frame ~= hearthstone then ordered[#ordered + 1] = frame end
+        if not isBagButton[frame] and frame ~= hearthstone then
+            if isLockedSlot(frame) then
+                lockedSlots[#lockedSlots + 1] = frame
+            else
+                items[#items + 1] = frame
+            end
+        end
     end
+    for i = #bagButtons, 1, -1 do ordered[#ordered + 1] = bagButtons[i] end
+    for _, frame in ipairs(lockedSlots) do ordered[#ordered + 1] = frame end
+    for _, frame in ipairs(items) do ordered[#ordered + 1] = frame end
     if hearthstone and present[hearthstone] then ordered[#ordered + 1] = hearthstone end
     return ordered, #bagButtons
 end

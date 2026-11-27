@@ -65,6 +65,7 @@ local function items(bagName, count)
         list[i].bagID = tonumber(bagName:match("%-?%d+"))
         list[i].slotID = i
         list[i].GetID = function(self) return self.slotID end
+        list[i].IsExtended = function(self) return self.locked == true end
     end
     return list
 end
@@ -72,14 +73,25 @@ end
 -- The game's own list, in its order (ContainerFrame.lua:1080): each bag from the
 -- highest, its items then its button; the keyring (collapsed) first.
 -- backpackSize: the backpack's slots (16 by default); bags 1 to 4 have 6.
-local function gameList(withKeyring, backpackSize)
-    local list = {}
+-- lockedCount: its last slots locked until the account has an authenticator,
+-- which the game moves to the end of its list (ContainerFrame.lua:1017-1035).
+local function gameList(withKeyring, backpackSize, lockedCount)
+    local list, lockedSlots = {}, {}
     local function add(frames) for _, frame in ipairs(frames) do list[#list + 1] = frame end end
     if withKeyring then add({ game.buttons[-2] }) end
     for bagID = 4, 0, -1 do
-        add(items("bag" .. bagID, bagID == 0 and (backpackSize or 16) or 6))
+        local bagItems = items("bag" .. bagID, bagID == 0 and (backpackSize or 16) or 6)
+        if bagID == 0 and lockedCount then
+            for i = #bagItems - lockedCount + 1, #bagItems do
+                bagItems[i].locked = true
+                lockedSlots[#lockedSlots + 1] = bagItems[i]
+                bagItems[i] = nil
+            end
+        end
+        add(bagItems)
         add({ game.buttons[bagID] })
     end
+    add(lockedSlots)
     return list
 end
 
@@ -178,8 +190,8 @@ local function boot(options)
 end
 
 -- The game lays the window out (its list in its order).
-local function layOut(withKeyring, backpackSize)
-    game.lastList = gameList(withKeyring, backpackSize)
+local function layOut(withKeyring, backpackSize, lockedCount)
+    game.lastList = gameList(withKeyring, backpackSize, lockedCount)
     ContainerFrameCombinedBags:UpdateFrameSize()
     ContainerFrameCombinedBags:UpdateItemLayout()
     return game.lastList
@@ -263,6 +275,22 @@ test("the Hearthstone last: the top row's first slot from the left", function()
     expectEqual(cell(itemButton(2, 3)), 4, "on the top row")
     expectEqual(position(game.buttons[0]), 6, "the backpack's still in the bottom row")
     checkSameCells("with the Hearthstone")
+end)
+
+test("locked slots (no authenticator): left of the bags, not at the top", function()
+    local addon = start()
+    startWatching(addon)
+    game.hearthstoneAt = { 2, 3 }
+    local list = layOut(true, 20, 4)   -- 44 items (4 locked) and 6 bag buttons: 50 cells
+    expectEqual(list[#list].locked, true, "the game puts them last, at the top")
+    for slotID = 17, 20 do
+        local point = position(itemButton(0, slotID))
+        expectEqual(point >= 7 and point <= 10, true, "slot " .. slotID .. " on the bottom row, left of the bags")
+    end
+    expectEqual(position(itemButton(4, 1)), 11, "the game's first item right after them")
+    expectEqual(position(itemButton(2, 3)), 50, "the Hearthstone still last")
+    expectEqual(position(game.buttons[0]), 6, "the bags still bottom right")
+    checkSameCells("with locked slots")
 end)
 
 test("Hearthstone setting off: it stays among the items, in the game's order", function()

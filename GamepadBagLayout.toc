@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Gamepad Bag Layout
-## Notes: Puts your bags' buttons together at the bottom of the controller's bag window, and your Hearthstone at the top, where the cursor starts. Settings in Options > AddOns > Gamepad Bag Layout, or /gpbl.
+## Notes: Puts your bags' buttons together at the bottom of the controller's bag window, the slots locked until you add an authenticator next to them, and your Hearthstone at the top, where the cursor starts. Settings in Options > AddOns > Gamepad Bag Layout, or /gpbl.
 ## Author: Artisan
 ## Version: @project-version@
 ## SavedVariables: GamepadBagLayoutDB
