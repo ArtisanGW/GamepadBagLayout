@@ -1,6 +1,6 @@
 # Summary
 
-Puts your bags' buttons together at the bottom of the controller's bag window, and your Hearthstone at the top.
+Home is one press away. Your Hearthstone at the top of the controller's bag window, every bag button gathered at the bottom.
 
 # Categories
 
