@@ -14,7 +14,7 @@ GNU General Public License version 3 (GPLv3)
 
 With the controller UI on, the game's bag window puts each bag's button (its free slots, its menu) right after that bag's items, so they end up scattered across the window. Gamepad Bag Layout puts them together at the bottom.
 
-[![Support me on Ko-fi](https://images.weserv.nl/?url=storage.ko-fi.com/cdn/kofi5.png&h=36)](https://ko-fi.com/artisangw)
+[![Support me on Ko-fi](https://raw.githubusercontent.com/ArtisanGW/assets/main/kofi-button.png)](https://ko-fi.com/artisangw)
 
 - Left to right: the backpack, bag 1 and on, the reagent bag
 - Your items keep the game's order above them
