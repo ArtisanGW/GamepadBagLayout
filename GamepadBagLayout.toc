@@ -5,17 +5,17 @@
 ## Version: @project-version@
 ## SavedVariables: GamepadBagLayoutDB, GamepadBagLayoutDebugDB
 ## Category: Private
-## IconTexture: Interface\AddOns\GamepadBagLayout\Media\icon-64.png
+## IconTexture: Interface\AddOns\GamepadBagLayout\Code\Media\icon-64.png
 
-GamepadBagLayout.lua
-Hearthstone.lua
-BagTint.lua
-PickerSticks.lua
-TintPicker.lua
-BagButtons.lua
-Popup.lua
-RelatedAddons.lua
+Code/GamepadBagLayout.lua
+Code/Hearthstone.lua
+Code/BagTint.lua
+Code/PickerSticks.lua
+Code/TintPicker.lua
+Code/BagButtons.lua
+Code/Popup.lua
+Code/RelatedAddons.lua
 
 #@do-not-package@
-Debug.lua
+Code/Debug.lua
 #@end-do-not-package@

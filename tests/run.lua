@@ -13,7 +13,7 @@ local function expectEqual(actual, expected, message)
     if actual ~= expected then error((message or "") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
-local ADDON_FILES = { "GamepadBagLayout.lua", "Hearthstone.lua", "BagTint.lua", "PickerSticks.lua", "TintPicker.lua", "BagButtons.lua", "Popup.lua", "RelatedAddons.lua" }
+local ADDON_FILES = { "Code/GamepadBagLayout.lua", "Code/Hearthstone.lua", "Code/BagTint.lua", "Code/PickerSticks.lua", "Code/TintPicker.lua", "Code/BagButtons.lua", "Code/Popup.lua", "Code/RelatedAddons.lua" }
 
 local function newFrame(name)
     local frame = { name = name, shown = true, protected = false, forbidden = false, scripts = {} }
@@ -542,13 +542,13 @@ end)
 
 test("the release zip leaves out Debug.lua and the screenshots", function()
     local pkgmeta = assert(io.open(".pkgmeta")):read("*a")
-    expectEqual(pkgmeta:find("\n%s*%- Debug%.lua\n") ~= nil, true, ".pkgmeta ignores Debug.lua")
-    expectEqual(pkgmeta:find("\n%s*%- Media/screenshots\n") ~= nil, true, ".pkgmeta ignores the screenshots")
+    expectEqual(pkgmeta:find("\n%s*%- Code/Debug%.lua\n") ~= nil, true, ".pkgmeta ignores Debug.lua")
+    expectEqual(pkgmeta:find("\n%s*%- Data\n") ~= nil, true, ".pkgmeta ignores the screenshots")
     local toc = assert(io.open("GamepadBagLayout.toc")):read("*a")
     local block = toc:match("#@do%-not%-package@(.-)#@end%-do%-not%-package@")
-    expectEqual(block ~= nil and block:find("Debug.lua", 1, true) ~= nil, true, "the .toc lists Debug.lua inside do-not-package")
+    expectEqual(block ~= nil and block:find("Code/Debug.lua", 1, true) ~= nil, true, "the .toc lists Debug.lua inside do-not-package")
     local outside = toc:gsub("#@do%-not%-package@.-#@end%-do%-not%-package@", "")
-    expectEqual(outside:find("Debug.lua", 1, true), nil, "and nowhere else")
+    expectEqual(outside:find("Code/Debug.lua", 1, true), nil, "and nowhere else")
 end)
 
 print(passed .. " passed, " .. failed .. " failed")
