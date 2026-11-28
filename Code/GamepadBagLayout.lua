@@ -13,6 +13,7 @@
 --                          (a copy of devAddons/luaSnippets/PickerSticks.lua: change it there)
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
+--   Debug.lua              development builds only: /gpbl debug
 local ADDON_NAME = ...
 
 local BagLayout = {
