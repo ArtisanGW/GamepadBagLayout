@@ -1,6 +1,6 @@
 -- Debug only, not in the release zip (.pkgmeta ignore, toc do-not-package).
 -- Records where the controller's cursor goes in the bag window, for a D-pad
--- test driven from outside (devAddons/virtual_pad.py): each button it lands on
+-- test driven from outside (DevTools/virtual_pad.py): each button it lands on
 -- (with its place in the game's navigation grid, SmartNavigation.lua:1332
 -- UpdateGrid, forever branch), the grid itself, and the controller button that
 -- opens the game's wheel (OPENRADIAL, Blizzard_Gamepad/Bindings.xml:2), and

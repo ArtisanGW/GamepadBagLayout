@@ -6,7 +6,7 @@
 -- tainted: its sticks do nothing.) That swatch sets the color only, so
 -- PickerSticks.lua adds the opacity bar, and the controller's sticks and D-pad,
 -- when the picker shows for this swatch.
-local _, addonTable = ...   -- PickerSticks.lua (devAddons/luaSnippets) puts itself there
+local _, addonTable = ...   -- PickerSticks.lua (DevTools/luaSnippets) puts itself there
 local BagLayout = _G.GamepadBagLayout
 
 local TintPicker = {

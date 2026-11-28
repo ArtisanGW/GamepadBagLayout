@@ -10,7 +10,7 @@
 --   BagTint.lua            a tint behind the bag buttons
 --   TintPicker.lua         its color swatch, with the picker's opacity bar
 --   PickerSticks.lua       the color picker on a controller: sticks, D-pad, opacity bar
---                          (a copy of devAddons/luaSnippets/PickerSticks.lua: change it there)
+--                          (a copy of DevTools/luaSnippets/PickerSticks.lua: change it there)
 --   Popup.lua              a popup in the game's style
 --   RelatedAddons.lua      hints for our other controller addons
 --   Debug.lua              development builds only: /gpbl debug
